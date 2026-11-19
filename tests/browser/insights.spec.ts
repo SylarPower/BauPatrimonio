@@ -1,6 +1,5 @@
 import { mockCloud, signIn } from "./cloud-helpers";
 import { test, expect } from "@playwright/test";
-import { readFile } from "node:fs/promises";
 for (const width of [320, 390, 1440])
   for (const theme of ["light", "amoled"])
     test(`insight interattivi tutti i formati ${width} ${theme}`, async ({
@@ -35,7 +34,9 @@ for (const width of [320, 390, 1440])
           .click();
       for (const by of ["institution", "nature", "category"])
         await page.getByLabel("Ripartizione per").selectOption(by);
-      await page.getByRole("button", { name: "Leggi tra i numeri" }).click();
+      await page
+        .getByRole("button", { name: "Confronto e qualità dei dati" })
+        .click();
       for (const f of ["Variazioni", "Tabella", "Cascata"])
         await page
           .getByRole("group", { name: "Formato confronto" })
@@ -60,40 +61,61 @@ for (const width of [320, 390, 1440])
           fullPage: true,
         });
     });
-test("esporta SVG PNG e CSV e non esporta importi nascosti", async ({
-  page,
-}) => {
+test("grafici senza esportazioni e privacy preservata", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
-  for (const format of ["SVG", "PNG", "CSV"]) {
-    const wait = page.waitForEvent("download");
-    await page
-      .getByRole("button", {
-        name: `Esporta Composizione del patrimonio in ${format}`,
-        exact: true,
-      })
-      .click();
-    const file = await wait;
-    const path = await file.path();
-    expect(path).toBeTruthy();
-    const bytes = await readFile(path!);
-    expect(bytes.length).toBeGreaterThan(100);
-    if (format === "SVG") {
-      expect(bytes.toString()).toContain("Immobili");
-      expect(bytes.toString()).not.toContain("var(--");
-    }
-    if (format === "PNG") expect(bytes.subarray(1, 4).toString()).toBe("PNG");
-  }
+  await page.locator(".demo-history").click();
+  await expect(
+    page
+      .locator(".insights")
+      .getByRole("button", { name: /esporta|svg|png|csv/i }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Confronto e qualità dei dati" })
+    .click();
+  await expect(
+    page
+      .locator(".insights")
+      .getByRole("button", { name: /esporta|svg|png|csv/i }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("group", { name: "Ambito dei grafici" })
+    .getByRole("button", { name: "Investimenti", exact: true })
+    .click();
+  await expect(
+    page
+      .locator(".insights")
+      .getByRole("button", { name: /esporta|svg|png|csv/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("group", { name: "Serie del grafico" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Andamento degli investimenti",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Debito / attività note", { exact: true }),
+  ).toHaveCount(0);
+  const order = await page.locator(".insights").evaluate((el) => {
+    const charts = el.querySelector(".insights-grid"),
+      performance = el.querySelector(".performance-card");
+    return !!(
+      charts &&
+      performance &&
+      charts.compareDocumentPosition(performance) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+  expect(order).toBe(true);
   await page
     .getByRole("button", { name: "Nascondi importi", exact: true })
     .click();
-  for (const b of await page
-    .getByRole("button", { name: /^Esporta .* in / })
-    .all())
-    await expect(b).toBeDisabled();
-  await expect(page.locator(".insights")).not.toContainText("172.000");
+  await expect(page.locator(".insights")).not.toContainText("8.000,00");
   await expect(page.locator(".insights svg").first()).not.toContainText(
-    "112.000",
+    "8.000",
   );
 });
 test("punti navigabili da tastiera e grafico parziale senza cascata", async ({
@@ -107,7 +129,9 @@ test("punti navigabili da tastiera e grafico parziale senza cascata", async ({
   await points.first().focus();
   await page.keyboard.press("ArrowRight");
   await expect(points.nth(1)).toBeFocused();
-  await page.getByRole("button", { name: "Leggi tra i numeri" }).click();
+  await page
+    .getByRole("button", { name: "Confronto e qualità dei dati" })
+    .click();
   await page.getByLabel("Da", { exact: true }).fill("2000-01-01");
   await expect(page.locator(".comparison-summary")).toContainText(
     "Confronto parziale",
@@ -119,7 +143,7 @@ test("punti navigabili da tastiera e grafico parziale senza cascata", async ({
 test("valore non disponibile resta mancante, non zero", async ({ page }) => {
   await page.goto("/");
   await mockCloud(page);
-  await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await page.getByRole("button", { name: "Accedi o crea account" }).click();
   await signIn(page);
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page.getByRole("button", { name: "Immobili", exact: false }).click();
@@ -135,7 +159,7 @@ test("importa strumenti con quantità e prezzo e preserva il totale del dossier"
 }) => {
   await page.goto("/");
   await mockCloud(page);
-  await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await page.getByRole("button", { name: "Accedi o crea account" }).click();
   await signIn(page);
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page

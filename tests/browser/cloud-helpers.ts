@@ -58,7 +58,10 @@ export async function signIn(page: Page) {
   await page
     .getByLabel("Password", { exact: true })
     .fill("not-a-real-password");
-  await page.getByRole("button", { name: "Accedi", exact: true }).click();
+  await page
+    .locator(".auth-card form")
+    .getByRole("button", { name: "Accedi", exact: true })
+    .click();
   await expect(page.locator(".net-amount")).toBeVisible();
   await expect(page.getByText("Salvato online", { exact: true })).toBeVisible();
 }

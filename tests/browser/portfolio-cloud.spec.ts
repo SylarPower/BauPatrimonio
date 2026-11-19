@@ -72,7 +72,7 @@ test("conflitto conserva la pagina, blocca modifiche e non dichiara salvato", as
 }) => {
   const cloud = await mockCloud(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await page.getByRole("button", { name: "Accedi o crea account" }).click();
   await signIn(page);
   cloud.fail = true;
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();

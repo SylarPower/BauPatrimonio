@@ -2593,35 +2593,6 @@ th:nth-child(2) {
 .chart-explanation svg {
   vertical-align: middle;
 }
-.chart-export {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 13px 20px;
-  border-top: 1px solid var(--border);
-  font-size: 10px;
-  color: var(--muted);
-}
-.chart-export > span {
-  margin-right: auto;
-}
-.chart-export > button {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  border: 1px solid var(--border);
-  background: var(--paper);
-  border-radius: 5px;
-  padding: 6px 8px;
-  min-height: 31px;
-  font-size: 10px;
-}
-.chart-export small {
-  font-size: 10px;
-  flex-basis: 100%;
-  line-height: 1.7;
-}
 .composition-svg {
   display: block;
   width: 100%;
@@ -2826,13 +2797,6 @@ th:nth-child(2) {
   .series-controls .inline-link {
     font-size: 10px;
   }
-  .chart-export button {
-    min-height: 40px;
-    padding: 9px 10px;
-  }
-  .chart-export {
-    padding: 13px 16px;
-  }
   .chart-readout {
     margin: 0 16px;
     flex-wrap: wrap;
@@ -2904,8 +2868,7 @@ th:nth-child(2) {
   .comparison-insight > .section-heading,
   .comparison-insight > .comparison-controls,
   .comparison-insight > .comparison-summary,
-  .comparison-insight > .chart-explanation,
-  .comparison-insight > .chart-export {
+  .comparison-insight > .chart-explanation {
     position: sticky;
     left: 0;
     max-width: calc(100vw - 42px);
@@ -2966,8 +2929,7 @@ th:nth-child(2) {
   .comparison-insight > .section-heading,
   .comparison-insight > .comparison-controls,
   .comparison-insight > .comparison-summary,
-  .comparison-insight > .chart-explanation,
-  .comparison-insight > .chart-export {
+  .comparison-insight > .chart-explanation {
     position: static;
     max-width: none;
   }
@@ -3025,9 +2987,6 @@ th:nth-child(2) {
 }
 @media (max-width: 700px) {
   .insight-tabs > button {
-    min-height: 44px;
-  }
-  .chart-export > button {
     min-height: 44px;
   }
   .point-select {
@@ -3270,4 +3229,29 @@ th:nth-child(2) {
   .auth-card {
     padding: 20px 16px;
   }
+}
+.quality-grid.investment-quality {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 700px) {
+  .quality-grid.investment-quality {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.auth-card .auth-tabs {
+  margin-bottom: 20px;
+  gap: 8px;
+}
+.auth-card .auth-tabs button {
+  flex: 1;
+  min-height: 44px;
+  font-size: 13px;
+}
+.auth-followup {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.auth-card > [role="status"] {
+  padding: 12px 0;
 }

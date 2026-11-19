@@ -212,7 +212,11 @@ function Modal({
     </div>
   );
 }
-function App() {
+function App({
+  authReturn = null,
+}: {
+  authReturn?: "signin" | "expired" | null;
+}) {
   const [mode, setMode] = useState<"personal" | "demo" | null>(null),
     [store, setStore] = useState<Store>(empty),
     [loading, setLoading] = useState(true),
@@ -238,7 +242,7 @@ function App() {
   };
   useEffect(() => {
     const m = pref.get("bau-mode") as "personal" | "demo" | null;
-    if (m === "demo") {
+    if (m === "demo" && !authReturn) {
       load("demo")
         .then((data) => {
           setStore(data || demo());
@@ -247,7 +251,7 @@ function App() {
         .catch(() => setPersistError("Demo locale non disponibile."))
         .finally(() => setLoading(false));
     } else {
-      setAuth(m === "personal");
+      setAuth(m === "personal" || !!authReturn);
       setLoading(false);
     }
   }, []);
@@ -517,6 +521,7 @@ function App() {
           </p>
           {auth ? (
             <AuthGate
+              initialNotice={authReturn}
               onReady={openPersonal}
               onCancel={() => {
                 cloudLogout();
@@ -527,7 +532,7 @@ function App() {
           ) : (
             <div className="welcome-buttons">
               <button className="primary" onClick={() => start("personal")}>
-                Inizia il mio patrimonio <ArrowRight size={18} />
+                Accedi o crea account <ArrowRight size={18} />
               </button>
               <button className="secondary" onClick={() => start("demo")}>
                 Prova con dati di esempio
@@ -658,12 +663,12 @@ function App() {
                   </h1>
                   <p>
                     {page === "Panoramica"
-                      ? "Un punto fermo, per guardare avanti."
+                      ? "Totale, grafici e andamento del tuo patrimonio."
                       : page === "Patrimonio"
-                        ? "Tutto quello che possiedi e tutto quello che devi."
+                        ? "Aggiungi e aggiorna beni, investimenti, conti e debiti."
                         : page === "Storico"
                           ? "Rilevazioni e movimenti, senza perdere il filo."
-                          : "Manuali, importate o collegate. Sempre riconoscibili."}
+                          : "Importa i tuoi dati. I collegamenti bancari non sono ancora attivi."}
                   </p>
                 </div>
                 <button className="primary add-desktop" onClick={add}>

@@ -1,7 +1,6 @@
 import Performance from "./Performance";
-import { useMemo, useRef, useState, type RefObject } from "react";
-import { Download, Info, ChevronDown, ChartNoAxesCombined } from "lucide-react";
-import Papa from "papaparse";
+import { useMemo, useRef, useState } from "react";
+import { Info, ChevronDown, ChartNoAxesCombined } from "lucide-react";
 import { dateLabel, money, today, totals, type Store } from "./model";
 import {
   comparison,
@@ -11,59 +10,8 @@ import {
   history,
   type Slice,
 } from "./insights-model";
-import { download } from "./storage";
-import { exportChart } from "./chart-export";
 const pct = (n: number) =>
   new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1 }).format(n) + "%";
-function Export({
-  svg,
-  title,
-  rows,
-  hidden,
-  images = true,
-}: {
-  svg: RefObject<SVGSVGElement | null>;
-  title: string;
-  rows: Record<string, string | number>[];
-  hidden: boolean;
-  images?: boolean;
-}) {
-  const [error, setError] = useState("");
-  return (
-    <div className="chart-export">
-      <span>Esporta</span>
-      {(["svg", "png", "csv"] as const).map((f) => (
-        <button
-          key={f}
-          disabled={hidden || !rows.length || (f !== "csv" && !images)}
-          aria-label={`Esporta ${title} in ${f.toUpperCase()}`}
-          onClick={async () => {
-            try {
-              setError("");
-              if (f === "csv")
-                download(
-                  "baupatrimonio-insight.csv",
-                  "\uFEFF" +
-                    Papa.unparse(rows, {
-                      delimiter: ";",
-                      escapeFormulae: true,
-                    }),
-                  "text/csv;charset=utf-8",
-                );
-              else if (svg.current) await exportChart(svg.current, title, f);
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          {f.toUpperCase()} <Download size={11} />
-        </button>
-      ))}
-      {hidden && <small>Mostra gli importi per esportare.</small>}
-      {error && <small role="alert">{error}</small>}
-    </div>
-  );
-}
 function Tabs<T extends string>({
   label,
   value,
@@ -131,26 +79,32 @@ export default function Insights({
       {scope === "investment" && (
         <>
           <p>
-            Tutti gli investimenti insieme. Esclusi conti correnti, fondo
-            pensione, immobili e debiti. I dettagli titoli non vengono sommati
-            una seconda volta al dossier.
+            Solo investimenti, senza liquidità, pensione, immobili e debiti. Il
+            totale in alto resta il patrimonio complessivo.
           </p>
-          <Performance
-            key={scope}
-            store={store}
-            hidden={hidden}
-            onChange={
-              onChange
-                ? (s) => onChange({ ...fullStore, movements: s.movements })
-                : undefined
-            }
-          />
         </>
       )}
       <div className="dashboard-grid insights-grid">
-        <Trend store={store} asOf={asOf} hidden={hidden} />
+        <Trend
+          store={store}
+          asOf={asOf}
+          hidden={hidden}
+          investments={scope === "investment"}
+        />
         <Composition store={store} asOf={asOf} hidden={hidden} />
       </div>
+      {scope === "investment" && (
+        <Performance
+          key={scope}
+          store={store}
+          hidden={hidden}
+          onChange={
+            onChange
+              ? (s) => onChange({ ...fullStore, movements: s.movements })
+              : undefined
+          }
+        />
+      )}
       <button
         className="insights-expand"
         aria-expanded={expanded}
@@ -159,8 +113,8 @@ export default function Insights({
       >
         <ChartNoAxesCombined size={18} />
         <span>
-          <strong>Leggi tra i numeri</strong>
-          <small>Confronto tra date, debiti e qualità dei dati</small>
+          <strong>Confronto e qualità dei dati</strong>
+          <small>Cosa è cambiato e quali valori sono da aggiornare</small>
         </span>
         <ChevronDown
           size={18}
@@ -175,7 +129,13 @@ export default function Insights({
               <h2>Quanto è completo il quadro?</h2>
               <span className="subtle-tag">Al {dateLabel(asOf)}</span>
             </div>
-            <div className="quality-grid">
+            <div
+              className={
+                scope === "investment"
+                  ? "quality-grid investment-quality"
+                  : "quality-grid"
+              }
+            >
               <div>
                 <small>Copertura delle voci</small>
                 <strong>
@@ -199,21 +159,23 @@ export default function Insights({
                   Una data recente non certifica la stima.
                 </p>
               </div>
-              <div>
-                <small>Debito / attività note</small>
-                <strong>
-                  {hidden
-                    ? "••••"
-                    : t.active
-                      ? pct((t.debt / t.active) * 100)
-                      : "Non calcolabile"}
-                </strong>
-                <p>
-                  {t.missing.length
-                    ? "Rapporto parziale: non descrive tutto il patrimonio."
-                    : "Confronto tra capitale residuo e attività di tua competenza. Non è un indicatore di sostenibilità delle rate."}
-                </p>
-              </div>
+              {scope === "all" && (
+                <div>
+                  <small>Debito / attività note</small>
+                  <strong>
+                    {hidden
+                      ? "••••"
+                      : t.active
+                        ? pct((t.debt / t.active) * 100)
+                        : "Non calcolabile"}
+                  </strong>
+                  <p>
+                    {t.missing.length
+                      ? "Rapporto parziale: non descrive tutto il patrimonio."
+                      : "Confronto tra capitale residuo e attività di tua competenza. Non è un indicatore di sostenibilità delle rate."}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -225,16 +187,19 @@ function Trend({
   store,
   asOf,
   hidden,
+  investments = false,
 }: {
   store: Store;
   asOf: string;
   hidden: boolean;
+  investments?: boolean;
 }) {
   const [range, setRange] = useState("Tutto"),
     [format, setFormat] = useState<"step" | "line" | "bars">("step"),
-    [series, setSeries] = useState<"net" | "gross">("net"),
+    [chosenSeries, setSeries] = useState<"net" | "gross">("net"),
     [selected, setSelected] = useState<string | null>(null),
     [table, setTable] = useState(false);
+  const series = investments ? "net" : chosenSeries;
   const svg = useRef<SVGSVGElement>(null);
   const points = useMemo(
     () => history(store, asOf, range),
@@ -268,7 +233,7 @@ function Trend({
   const keys =
     series === "net" ? (["net"] as const) : (["active", "debt"] as const);
   const labels = {
-    net: "Patrimonio netto",
+    net: investments ? "Valore degli investimenti" : "Patrimonio netto",
     active: "Attività",
     debt: "Debiti",
   };
@@ -292,7 +257,11 @@ function Trend({
   return (
     <section className="card trend-card">
       <div className="section-heading">
-        <h2>Un passo alla volta</h2>
+        <h2>
+          {investments
+            ? "Andamento degli investimenti"
+            : "Andamento del patrimonio"}
+        </h2>
         <span className="subtle-tag">Variazione, non rendimento</span>
       </div>
       <div className="insight-controls">
@@ -319,15 +288,17 @@ function Trend({
         </select>
       </div>
       <div className="series-controls">
-        <Tabs
-          label="Serie del grafico"
-          value={series}
-          onChange={setSeries}
-          options={[
-            { value: "net", label: "Patrimonio netto" },
-            { value: "gross", label: "Attività e debiti" },
-          ]}
-        />
+        {!investments && (
+          <Tabs
+            label="Serie del grafico"
+            value={series}
+            onChange={setSeries}
+            options={[
+              { value: "net", label: "Patrimonio netto" },
+              { value: "gross", label: "Attività e debiti" },
+            ]}
+          />
+        )}
         <button
           className="inline-link"
           onClick={() => setTable(!table)}
@@ -341,7 +312,11 @@ function Trend({
           ref={svg}
           viewBox={`0 0 ${W} ${H}`}
           role="img"
-          aria-label="Andamento del patrimonio per date effettive"
+          aria-label={
+            investments
+              ? "Andamento degli investimenti per date effettive"
+              : "Andamento del patrimonio per date effettive"
+          }
         >
           <desc>
             Solo rilevazioni esistenti. Gli importi parziali sono punti vuoti
@@ -540,17 +515,27 @@ function Trend({
             <thead>
               <tr>
                 <th>Data</th>
-                <th>Attività</th>
-                <th>Debiti</th>
-                <th>Netto / stato</th>
+                {!investments && (
+                  <>
+                    <th>Attività</th>
+                    <th>Debiti</th>
+                  </>
+                )}
+                <th>
+                  {investments ? "Investimenti / stato" : "Netto / stato"}
+                </th>
               </tr>
             </thead>
             <tbody>
               {points.map((p) => (
                 <tr key={p.date}>
                   <td>{dateLabel(p.date)}</td>
-                  <td>{visible(p.active)}</td>
-                  <td>{visible(p.debt)}</td>
+                  {!investments && (
+                    <>
+                      <td>{visible(p.active)}</td>
+                      <td>{visible(p.debt)}</td>
+                    </>
+                  )}
                   <td>
                     {visible(p.net)}
                     {p.missing.length > 0 ? " · Parziale" : ""}
@@ -561,19 +546,6 @@ function Trend({
           </table>
         </div>
       )}
-      <Export
-        svg={svg}
-        title="Andamento del patrimonio"
-        hidden={hidden}
-        rows={points.map((p) => ({
-          data: p.date,
-          attivita_EUR: p.active,
-          debiti_EUR: p.debt,
-          netto_EUR: p.net,
-          stato: p.missing.length ? "Totale parziale" : "Completo",
-          voci_mancanti: p.missing.join(", "),
-        }))}
-      />
     </section>
   );
 }
@@ -588,8 +560,7 @@ function Composition({
 }) {
   const [format, setFormat] = useState<"bars" | "donut" | "table">("donut"),
     [by, setBy] = useState<"category" | "institution" | "nature">("category");
-  const svg = useRef<SVGSVGElement>(null),
-    slices = composition(store.assets, asOf, by),
+  const slices = composition(store.assets, asOf, by),
     t = totals(store.assets, asOf);
   let offset = 0;
   return (
@@ -624,7 +595,6 @@ function Composition({
       {slices.length ? (
         <>
           <svg
-            ref={svg}
             className="composition-svg"
             viewBox={
               format === "bars"
@@ -809,7 +779,7 @@ function Composition({
             {by === "nature"
               ? "La liquidabilità descrive la natura delle voci, non garantisce tempi di vendita o disponibilità immediata."
               : "Percentuali sulle sole attività note. I debiti sono separati."}{" "}
-            La previdenza è inclusa, non è denaro disponibile.
+            La previdenza, quando presente, è distinta dalla liquidità.
           </p>
         </>
       ) : (
@@ -817,19 +787,6 @@ function Composition({
           Aggiungi un’attività con un valore per vedere la ripartizione.
         </p>
       )}
-      <Export
-        svg={svg}
-        title="Composizione del patrimonio"
-        hidden={hidden}
-        images={format !== "table"}
-        rows={slices.map((s) => ({
-          gruppo: s.label,
-          data: asOf,
-          importo_EUR: s.amount,
-          percentuale: s.percent,
-          stato: t.missing.length ? "Parziale" : "Completo",
-        }))}
-      />
     </section>
   );
 }
@@ -847,7 +804,6 @@ function Compare({
   const [from, setFrom] = useState(dates[0] || asOf),
     [to, setTo] = useState(asOf),
     [format, setFormat] = useState<"waterfall" | "bars" | "table">("waterfall");
-  const svg = useRef<SVGSVGElement>(null);
   const rows = comparison(store, from, to),
     a = totals(store.assets, from),
     b = totals(store.assets, to),
@@ -954,7 +910,6 @@ function Compare({
           aria-label="Grafico del confronto, scorrimento orizzontale su telefono"
         >
           <svg
-            ref={svg}
             className="comparison-svg"
             viewBox={`0 0 ${W} ${H}`}
             role="img"
@@ -1026,7 +981,6 @@ function Compare({
           aria-label="Grafico del confronto, scorrimento orizzontale su telefono"
         >
           <svg
-            ref={svg}
             className="comparison-svg"
             viewBox={`0 0 740 ${Math.max(120, rows.length * 47 + 30)}`}
             role="img"
@@ -1114,22 +1068,6 @@ function Compare({
         delle stime, prezzi e cambi; non li chiamano «rendimento». I movimenti
         importati non vengono sommati alle valutazioni.
       </p>
-      <Export
-        svg={svg}
-        title="Confronto del patrimonio"
-        hidden={hidden}
-        images={format !== "table" && !(format === "waterfall" && partial)}
-        rows={rows.map((r) => ({
-          voce: r.label,
-          dal: from,
-          al: to,
-          prima_EUR: r.before === null ? "Manca" : r.before,
-          dopo_EUR: r.after === null ? "Manca" : r.after,
-          effetto_sul_netto_EUR:
-            r.delta === null ? "Non confrontabile" : r.delta,
-          stato: partial ? "Parziale" : "Completo",
-        }))}
-      />
     </section>
   );
 }
