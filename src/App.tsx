@@ -1,5 +1,6 @@
 import CloudPanel from "./CloudPanel";
-import { cloudSave, cloudLogout, cloudActive } from "./cloud";
+import { cloudSave, cloudLogout, cloudRead, cloudUseLoaded } from "./cloud";
+import AuthGate from "./AuthGate";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownLeft,
@@ -226,22 +227,41 @@ function App() {
     [asOf, setAsOf] = useState(today()),
     [compare, setCompare] = useState(""),
     [persistError, setPersistError] = useState("");
+  const [auth, setAuth] = useState(false),
+    [sync, setSync] = useState<"saved" | "saving" | "error">("saved");
+  const syncRef = useRef<"saved" | "saving" | "error">("saved");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const setSyncStatus = (v: "saved" | "saving" | "error") => {
+    syncRef.current = v;
+    setSync(v);
+  };
   useEffect(() => {
     const m = pref.get("bau-mode") as "personal" | "demo" | null;
-    if (m) {
-      load(m)
+    if (m === "demo") {
+      load("demo")
         .then((data) => {
-          setStore(data || (m === "demo" ? demo() : empty()));
-          setMode(m);
+          setStore(data || demo());
+          setMode("demo");
         })
-        .catch(() =>
-          setPersistError(
-            "Archivio non disponibile. Abilita l’archiviazione del browser.",
-          ),
-        )
+        .catch(() => setPersistError("Demo locale non disponibile."))
         .finally(() => setLoading(false));
-    } else setLoading(false);
+    } else {
+      setAuth(m === "personal");
+      setLoading(false);
+    }
   }, []);
+  useEffect(() => {
+    if (mode !== "personal") return;
+    const before = (e: BeforeUnloadEvent) => {
+      if (syncRef.current !== "saved") {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", before);
+    return () => window.removeEventListener("beforeunload", before);
+  }, [mode]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     pref.set("bau-theme", theme);
@@ -253,28 +273,121 @@ function App() {
     }
   }, [toast]);
   const start = async (m: "personal" | "demo") => {
-    try {
-      const s = await load(m);
-      const next = s || (m === "demo" ? demo() : empty());
-      await save(m, next);
-      setStore(next);
+    if (m === "personal") {
+      setAuth(true);
+      setMode(null);
+      setStore(empty());
       cloudLogout();
-      setMode(m);
-      pref.set("bau-mode", m);
+      return;
+    }
+    try {
+      const next = (await load("demo")) || demo();
+      await save("demo", next);
+      cloudLogout();
+      setAuth(false);
+      setStore(next);
+      setMode("demo");
+      pref.set("bau-mode", "demo");
       setPage("Panoramica");
+      setPersistError("");
     } catch {
-      setPersistError("Impossibile aprire l’archivio del dispositivo.");
+      setPersistError("Impossibile aprire la demo del dispositivo.");
     }
   };
+  const openPersonal = (s: Store) => {
+    setStore(s);
+    setMode("personal");
+    setAuth(false);
+    pref.set("bau-mode", "personal");
+    setPage("Panoramica");
+    setPersistError("");
+    setSyncStatus("saved");
+  };
+  const logout = () => {
+    if (syncRef.current === "saving") return;
+    if (
+      syncRef.current === "error" &&
+      !window.confirm(
+        "Ci sono modifiche non salvate. Uscendo verranno perse. Vuoi uscire?",
+      )
+    )
+      return;
+    cloudLogout();
+    setStore(empty());
+    setMode(null);
+    setModal(null);
+    setSelected(null);
+    setAuth(false);
+    setPersistError("");
+    setSyncStatus("saved");
+    pref.remove("bau-mode");
+  };
   const update = async (s: Store) => {
-    try {
-      if (mode) await save(mode, s);
+    if (mode === "personal") {
+      if (syncRef.current !== "saved") {
+        setPersistError(
+          "Salvataggio non disponibile: risolvi prima l’errore o attendi il completamento.",
+        );
+        return;
+      }
+      setSyncStatus("saving");
       setStore(s);
-      if (mode === "personal") await cloudSave(s);
+      try {
+        await cloudSave(s);
+        if (modeRef.current === "personal") {
+          setSyncStatus("saved");
+          setPersistError("");
+        }
+      } catch (e) {
+        if (modeRef.current === "personal") {
+          setSyncStatus("error");
+          setPersistError((e as Error).message);
+        }
+      }
+    } else if (mode === "demo") {
+      setStore(s);
+      try {
+        await save("demo", s);
+        setPersistError("");
+      } catch {
+        setPersistError("Demo non salvata sul dispositivo.");
+      }
+    }
+  };
+  const retryOnline = async () => {
+    if (syncRef.current !== "error") return;
+    setSyncStatus("saving");
+    try {
+      await cloudSave(store, true);
+      setSyncStatus("saved");
       setPersistError("");
     } catch (e) {
+      setSyncStatus("error");
+      setPersistError((e as Error).message);
+    }
+  };
+  const reloadOnline = async () => {
+    if (syncRef.current === "saving") return;
+    if (
+      syncRef.current === "error" &&
+      !window.confirm(
+        "Ricaricare il cloud scarta le modifiche non salvate mostrate qui. Vuoi continuare?",
+      )
+    )
+      return;
+    setSyncStatus("saving");
+    try {
+      const s = await cloudRead();
+      if (!s) throw Error("Archivio online non trovato: accedi di nuovo.");
+      cloudUseLoaded();
       setStore(s);
-      setPersistError("Salvataggio non completato: " + (e as Error).message);
+      setSelected(null);
+      setModal(null);
+      setSyncStatus("saved");
+      setPersistError("");
+    } catch (e) {
+      setSyncStatus("error");
+      setPersistError((e as Error).message);
     }
   };
   const fmt = (n: number, c = "EUR") => (hidden ? "••••••" : money(n, c));
@@ -363,7 +476,8 @@ function App() {
             {mode && (
               <>
                 <span className="device-label">
-                  <span className="status-dot" /> Solo su questo dispositivo
+                  <span className="status-dot" />{" "}
+                  {mode === "demo" ? "Demo sul dispositivo" : "Archivio online"}
                 </span>
                 <button
                   className="iconbutton"
@@ -375,6 +489,7 @@ function App() {
                 <button
                   className="avatar"
                   aria-label="Apri profilo e impostazioni"
+                  disabled={mode === "personal" && sync !== "saved"}
                   onClick={() => setModal("profile")}
                 >
                   TU
@@ -400,14 +515,25 @@ function App() {
             <br />
             Un solo taccuino per vedere l’insieme.
           </p>
-          <div className="welcome-buttons">
-            <button className="primary" onClick={() => start("personal")}>
-              Inizia il mio patrimonio <ArrowRight size={18} />
-            </button>
-            <button className="secondary" onClick={() => start("demo")}>
-              Prova con dati di esempio
-            </button>
-          </div>
+          {auth ? (
+            <AuthGate
+              onReady={openPersonal}
+              onCancel={() => {
+                cloudLogout();
+                setAuth(false);
+                pref.remove("bau-mode");
+              }}
+            />
+          ) : (
+            <div className="welcome-buttons">
+              <button className="primary" onClick={() => start("personal")}>
+                Inizia il mio patrimonio <ArrowRight size={18} />
+              </button>
+              <button className="secondary" onClick={() => start("demo")}>
+                Prova con dati di esempio
+              </button>
+            </div>
+          )}
           <div className="welcome-facts">
             <span>
               <ShieldCheck size={17} /> I tuoi dati restano tuoi
@@ -443,11 +569,22 @@ function App() {
           </div>
           <main className="main">
             {mode === "personal" && (
-              <p className="muted" role="status">
-                {cloudActive()
-                  ? "Archivio online aperto · modifiche inviate al tuo Supabase"
-                  : "Archivio solo nel browser · apri il cloud dal Profilo per usare i dati online"}
-              </p>
+              <div className="sync-status" role="status" aria-live="polite">
+                <span>
+                  {sync === "saved"
+                    ? "Salvato online"
+                    : sync === "saving"
+                      ? "Salvataggio online in corso…"
+                      : "Modifiche non salvate online · non chiudere questa pagina"}
+                </span>
+                <button
+                  className="inline-link"
+                  disabled={sync === "saving"}
+                  onClick={reloadOnline}
+                >
+                  Aggiorna dati online
+                </button>
+              </div>
             )}
             {mode === "demo" && (
               <div className="demo-banner">
@@ -463,574 +600,623 @@ function App() {
             {persistError && (
               <div role="alert" className="error">
                 {persistError}
+                {mode === "personal" && (
+                  <>
+                    <p>
+                      Le modifiche non salvate restano solo in questa pagina,
+                      non sul server. Scarica una copia prima di ricaricare o
+                      uscire.
+                    </p>
+                    <button
+                      className="secondary"
+                      onClick={() =>
+                        download(
+                          "baupatrimonio-non-salvato.json",
+                          JSON.stringify({
+                            version: 1,
+                            mode: "personal",
+                            data: store,
+                          }),
+                        )
+                      }
+                    >
+                      Scarica modifiche non salvate
+                    </button>
+                    <button className="secondary" onClick={retryOnline}>
+                      Riprova salvataggio
+                    </button>
+                    <button className="text-button" onClick={logout}>
+                      Esci e accedi di nuovo
+                    </button>
+                  </>
+                )}
               </div>
             )}
-            <div className="page-heading">
-              <div>
-                <div className="eyebrow">
-                  {page === "Panoramica"
-                    ? "IL QUADRO D’INSIEME"
-                    : page === "Patrimonio"
-                      ? "OGNI VOCE, AL SUO POSTO"
-                      : page === "Storico"
-                        ? "IL TUO PERCORSO NEL TEMPO"
-                        : "DA DOVE ARRIVANO I TUOI DATI"}
-                </div>
-                <h1>
-                  {page === "Panoramica"
-                    ? "Il tuo patrimonio, in chiaro."
-                    : page === "Patrimonio"
-                      ? "Il tuo patrimonio"
-                      : page === "Storico"
-                        ? "La storia dei tuoi numeri"
-                        : "Le tue fonti"}
-                </h1>
-                <p>
-                  {page === "Panoramica"
-                    ? "Un punto fermo, per guardare avanti."
-                    : page === "Patrimonio"
-                      ? "Tutto quello che possiedi e tutto quello che devi."
-                      : page === "Storico"
-                        ? "Rilevazioni e movimenti, senza perdere il filo."
-                        : "Manuali, importate o collegate. Sempre riconoscibili."}
-                </p>
-              </div>
-              <button className="primary add-desktop" onClick={add}>
-                <Plus size={18} /> Aggiungi voce
-              </button>
-            </div>
-            {page === "Panoramica" && (
-              <>
-                <section className="net-card">
-                  <div className="net-top">
-                    <span>
-                      <span className="status-dot" /> PATRIMONIO NETTO
-                    </span>
-                    <span className="asof">
-                      Al {dateLabel(asOf)} <Clock3 size={14} />
-                    </span>
+            <fieldset
+              className="online-workspace"
+              disabled={mode === "personal" && sync !== "saved"}
+            >
+              <div className="page-heading">
+                <div>
+                  <div className="eyebrow">
+                    {page === "Panoramica"
+                      ? "IL QUADRO D’INSIEME"
+                      : page === "Patrimonio"
+                        ? "OGNI VOCE, AL SUO POSTO"
+                        : page === "Storico"
+                          ? "IL TUO PERCORSO NEL TEMPO"
+                          : "DA DOVE ARRIVANO I TUOI DATI"}
                   </div>
-                  <div className="net-amount">
-                    {fmt(t.net)}
-                    <span>EUR</span>
-                  </div>
-                  <p className="net-caption">
-                    Quello che possiedi, al netto di quello che devi.
+                  <h1>
+                    {page === "Panoramica"
+                      ? "Il tuo patrimonio, in chiaro."
+                      : page === "Patrimonio"
+                        ? "Il tuo patrimonio"
+                        : page === "Storico"
+                          ? "La storia dei tuoi numeri"
+                          : "Le tue fonti"}
+                  </h1>
+                  <p>
+                    {page === "Panoramica"
+                      ? "Un punto fermo, per guardare avanti."
+                      : page === "Patrimonio"
+                        ? "Tutto quello che possiedi e tutto quello che devi."
+                        : page === "Storico"
+                          ? "Rilevazioni e movimenti, senza perdere il filo."
+                          : "Manuali, importate o collegate. Sempre riconoscibili."}
                   </p>
-                  {t.missing.length > 0 && (
-                    <div className="warning">
-                      Totale parziale · Mancano valore o cambio di:{" "}
-                      {t.missing.join(", ")}
-                    </div>
-                  )}
-                  <div className="net-bottom">
-                    <div>
-                      <span className="mini-icon">
-                        <ArrowDownLeft size={16} />
-                      </span>
+                </div>
+                <button className="primary add-desktop" onClick={add}>
+                  <Plus size={18} /> Aggiungi voce
+                </button>
+              </div>
+              {page === "Panoramica" && (
+                <>
+                  <section className="net-card">
+                    <div className="net-top">
                       <span>
-                        <small>Totale attività</small>
-                        <strong>{fmt(t.active)}</strong>
+                        <span className="status-dot" /> PATRIMONIO NETTO
+                      </span>
+                      <span className="asof">
+                        Al {dateLabel(asOf)} <Clock3 size={14} />
                       </span>
                     </div>
-                    <span className="net-divider" />
-                    <div>
-                      <span className="mini-icon debt">
-                        <ArrowUpRight size={16} />
-                      </span>
-                      <span>
-                        <small>Debito residuo</small>
-                        <strong>{fmt(t.debt)}</strong>
-                      </span>
+                    <div className="net-amount">
+                      {fmt(t.net)}
+                      <span>EUR</span>
                     </div>
-                    <div className="net-note">
-                      <ShieldCheck size={17} />
-                      <span>
-                        Nessun doppio conteggio.
-                        <br />
-                        Solo la tua quota.
-                      </span>
+                    <p className="net-caption">
+                      Quello che possiedi, al netto di quello che devi.
+                    </p>
+                    {t.missing.length > 0 && (
+                      <div className="warning">
+                        Totale parziale · Mancano valore o cambio di:{" "}
+                        {t.missing.join(", ")}
+                      </div>
+                    )}
+                    <div className="net-bottom">
+                      <div>
+                        <span className="mini-icon">
+                          <ArrowDownLeft size={16} />
+                        </span>
+                        <span>
+                          <small>Totale attività</small>
+                          <strong>{fmt(t.active)}</strong>
+                        </span>
+                      </div>
+                      <span className="net-divider" />
+                      <div>
+                        <span className="mini-icon debt">
+                          <ArrowUpRight size={16} />
+                        </span>
+                        <span>
+                          <small>Debito residuo</small>
+                          <strong>{fmt(t.debt)}</strong>
+                        </span>
+                      </div>
+                      <div className="net-note">
+                        <ShieldCheck size={17} />
+                        <span>
+                          Nessun doppio conteggio.
+                          <br />
+                          Solo la tua quota.
+                        </span>
+                      </div>
                     </div>
+                  </section>
+                  {mode === "demo" &&
+                    !store.assets.some((a) =>
+                      a.valuations.some((v) =>
+                        v.note?.startsWith("Storico dimostrativo"),
+                      ),
+                    ) && (
+                      <button
+                        className="demo-history"
+                        onClick={() => {
+                          update(demoHistory(store));
+                          setToast(
+                            "Aggiunto uno storico fittizio al solo archivio demo.",
+                          );
+                        }}
+                      >
+                        <ChartNoAxesCombined size={17} />
+                        <span>
+                          Prova i grafici con sei mesi di storico dimostrativo{" "}
+                          <small>
+                            Dati inventati e dichiarati. Il netto attuale non
+                            cambia.
+                          </small>
+                        </span>
+                        <Plus size={17} />
+                      </button>
+                    )}
+                  <Insights
+                    store={store}
+                    asOf={asOf}
+                    hidden={hidden}
+                    onChange={update}
+                  />
+                  <section className="card overview-assets">
+                    <div className="section-heading">
+                      <h2>
+                        Le tue voci{" "}
+                        <span className="count">{active.length}</span>
+                      </h2>
+                      <button
+                        className="text-button"
+                        onClick={() => setPage("Patrimonio")}
+                      >
+                        Vedi patrimonio <ArrowRight size={15} />
+                      </button>
+                    </div>
+                    {active.length ? (
+                      assetRows(active.slice(0, 4))
+                    ) : (
+                      <EmptyState onAdd={add} />
+                    )}
+                  </section>
+                  <div className="notebook-note">
+                    <BookOpen size={18} />
+                    <span>
+                      <strong>Un buon inizio è già chiarezza.</strong> Aggiorna
+                      i tuoi valori quando vuoi: ogni rilevazione costruisce la
+                      tua storia.
+                    </span>
                   </div>
-                </section>
-                {mode === "demo" &&
-                  !store.assets.some((a) =>
-                    a.valuations.some((v) =>
-                      v.note?.startsWith("Storico dimostrativo"),
-                    ),
-                  ) && (
+                </>
+              )}
+              {page === "Patrimonio" && (
+                <>
+                  <div className="toolbar">
                     <button
-                      className="demo-history"
-                      onClick={() => {
-                        update(demoHistory(store));
-                        setToast(
-                          "Aggiunto uno storico fittizio al solo archivio demo.",
-                        );
-                      }}
+                      className="secondary"
+                      onClick={() => setModal("operation")}
                     >
-                      <ChartNoAxesCombined size={17} />
-                      <span>
-                        Prova i grafici con sei mesi di storico dimostrativo{" "}
-                        <small>
-                          Dati inventati e dichiarati. Il netto attuale non
-                          cambia.
-                        </small>
-                      </span>
-                      <Plus size={17} />
+                      <FileText size={16} /> Registra operazione
                     </button>
-                  )}
-                <Insights
-                  store={store}
-                  asOf={asOf}
-                  hidden={hidden}
-                  onChange={update}
-                />
-                <section className="card overview-assets">
-                  <div className="section-heading">
-                    <h2>
-                      Le tue voci <span className="count">{active.length}</span>
-                    </h2>
-                    <button
-                      className="text-button"
-                      onClick={() => setPage("Patrimonio")}
+                    <label className="search">
+                      <Search size={17} />
+                      <input
+                        placeholder="Cerca una voce o un istituto"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                    </label>
+                    <select
+                      aria-label="Raggruppa patrimonio"
+                      value={group}
+                      onChange={(e) => setGroup(e.target.value)}
                     >
-                      Vedi patrimonio <ArrowRight size={15} />
+                      <option value="category">Per categoria</option>
+                      <option value="institution">Per istituto</option>
+                    </select>
+                    <button
+                      className="secondary"
+                      onClick={() => setModal("transfer")}
+                    >
+                      <ArrowLeftRight size={16} />
+                      <span>Trasferisci</span>
                     </button>
                   </div>
-                  {active.length ? (
-                    assetRows(active.slice(0, 4))
-                  ) : (
-                    <EmptyState onAdd={add} />
-                  )}
-                </section>
-                <div className="notebook-note">
-                  <BookOpen size={18} />
-                  <span>
-                    <strong>Un buon inizio è già chiarezza.</strong> Aggiorna i
-                    tuoi valori quando vuoi: ogni rilevazione costruisce la tua
-                    storia.
-                  </span>
-                </div>
-              </>
-            )}
-            {page === "Patrimonio" && (
-              <>
-                <div className="toolbar">
-                  <button
-                    className="secondary"
-                    onClick={() => setModal("operation")}
-                  >
-                    <FileText size={16} /> Registra operazione
-                  </button>
-                  <label className="search">
-                    <Search size={17} />
-                    <input
-                      placeholder="Cerca una voce o un istituto"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
-                  </label>
-                  <select
-                    aria-label="Raggruppa patrimonio"
-                    value={group}
-                    onChange={(e) => setGroup(e.target.value)}
-                  >
-                    <option value="category">Per categoria</option>
-                    <option value="institution">Per istituto</option>
-                  </select>
-                  <button
-                    className="secondary"
-                    onClick={() => setModal("transfer")}
-                  >
-                    <ArrowLeftRight size={16} />
-                    <span>Trasferisci</span>
-                  </button>
-                </div>
-                <div className="summary-strip">
-                  <span>
-                    Attività <strong>{fmt(t.active)}</strong>
-                  </span>
-                  <span>
-                    Debiti <strong>{fmt(t.debt)}</strong>
-                  </span>
-                  <span>
-                    Netto <strong>{fmt(t.net)}</strong>
-                  </span>
-                </div>
-                {[
-                  ...new Set(
-                    active.map((a) =>
-                      group === "category"
-                        ? a.category
-                        : a.institution || "Senza istituto",
+                  <div className="summary-strip">
+                    <span>
+                      Attività <strong>{fmt(t.active)}</strong>
+                    </span>
+                    <span>
+                      Debiti <strong>{fmt(t.debt)}</strong>
+                    </span>
+                    <span>
+                      Netto <strong>{fmt(t.net)}</strong>
+                    </span>
+                  </div>
+                  {[
+                    ...new Set(
+                      active.map((a) =>
+                        group === "category"
+                          ? a.category
+                          : a.institution || "Senza istituto",
+                      ),
                     ),
-                  ),
-                ].map((g) => {
-                  const rows = active.filter(
-                    (a) =>
-                      (group === "category"
-                        ? a.category
-                        : a.institution || "Senza istituto") === g &&
+                  ].map((g) => {
+                    const rows = active.filter(
+                      (a) =>
+                        (group === "category"
+                          ? a.category
+                          : a.institution || "Senza istituto") === g &&
+                        `${a.name} ${a.institution}`
+                          .toLowerCase()
+                          .includes(query.toLowerCase()),
+                    );
+                    return rows.length ? (
+                      <section className="card asset-group" key={g}>
+                        <div className="section-heading">
+                          <h2>
+                            {group === "category"
+                              ? categories[g as Category]
+                              : g}{" "}
+                            <span className="count">{rows.length}</span>
+                          </h2>
+                          <strong>
+                            {fmt(
+                              rows.reduce(
+                                (s, a) => s + (value(a, asOf)?.toNumber() || 0),
+                                0,
+                              ),
+                            )}
+                          </strong>
+                        </div>
+                        {assetRows(rows)}
+                      </section>
+                    ) : null;
+                  })}
+                  {!active.length && (
+                    <section className="card">
+                      <EmptyState onAdd={add} />
+                    </section>
+                  )}
+                  {query &&
+                    !active.some((a) =>
                       `${a.name} ${a.institution}`
                         .toLowerCase()
                         .includes(query.toLowerCase()),
-                  );
-                  return rows.length ? (
-                    <section className="card asset-group" key={g}>
-                      <div className="section-heading">
-                        <h2>
-                          {group === "category" ? categories[g as Category] : g}{" "}
-                          <span className="count">{rows.length}</span>
-                        </h2>
-                        <strong>
-                          {fmt(
-                            rows.reduce(
-                              (s, a) => s + (value(a, asOf)?.toNumber() || 0),
-                              0,
-                            ),
-                          )}
-                        </strong>
-                      </div>
-                      {assetRows(rows)}
-                    </section>
-                  ) : null;
-                })}
-                {!active.length && (
-                  <section className="card">
-                    <EmptyState onAdd={add} />
-                  </section>
-                )}
-                {query &&
-                  !active.some((a) =>
-                    `${a.name} ${a.institution}`
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                  ) && <p>Nessuna voce corrisponde alla ricerca.</p>}
-                {store.assets.some((a) => a.archivedAt) && (
-                  <details className="card archived">
-                    <summary>
-                      Voci archiviate ·{" "}
-                      {store.assets.filter((a) => a.archivedAt).length}
-                    </summary>
-                    {assetRows(store.assets.filter((a) => a.archivedAt))}
-                  </details>
-                )}
-              </>
-            )}
-            {page === "Storico" && (
-              <>
-                <section className="card history-filters">
-                  <label>
-                    Situazione al
-                    <input
-                      type="date"
-                      value={asOf}
-                      max={today()}
-                      onChange={(e) =>
-                        e.target.value && setAsOf(e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    Confronta con
-                    <input
-                      type="date"
-                      value={compare}
-                      max={asOf}
-                      onChange={(e) => setCompare(e.target.value)}
-                    />
-                  </label>
-                  <div>
-                    <small>Patrimonio netto al {dateLabel(asOf)}</small>
-                    <strong>{fmt(t.net)}</strong>
-                    {compare && (
-                      <span className="change">
-                        {t.net - totals(store.assets, compare).net >= 0
-                          ? "+"
-                          : ""}
-                        {fmt(t.net - totals(store.assets, compare).net)} ·
-                        Variazione del patrimonio
-                      </span>
-                    )}
-                  </div>
-                </section>
-                {(t.missing.length > 0 ||
-                  (compare &&
-                    totals(store.assets, compare).missing.length > 0)) && (
-                  <p className="warning">
-                    Confronto parziale: alcune voci non hanno una rilevazione o
-                    un cambio valido alla data scelta.
-                  </p>
-                )}
-                {compare && (
-                  <section className="card comparison-card">
-                    <div className="section-heading">
-                      <h2>Quali voci hanno cambiato il totale?</h2>
+                    ) && <p>Nessuna voce corrisponde alla ricerca.</p>}
+                  {store.assets.some((a) => a.archivedAt) && (
+                    <details className="card archived">
+                      <summary>
+                        Voci archiviate ·{" "}
+                        {store.assets.filter((a) => a.archivedAt).length}
+                      </summary>
+                      {assetRows(store.assets.filter((a) => a.archivedAt))}
+                    </details>
+                  )}
+                </>
+              )}
+              {page === "Storico" && (
+                <>
+                  <section className="card history-filters">
+                    <label>
+                      Situazione al
+                      <input
+                        type="date"
+                        value={asOf}
+                        max={today()}
+                        onChange={(e) =>
+                          e.target.value && setAsOf(e.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Confronta con
+                      <input
+                        type="date"
+                        value={compare}
+                        max={asOf}
+                        onChange={(e) => setCompare(e.target.value)}
+                      />
+                    </label>
+                    <div>
+                      <small>Patrimonio netto al {dateLabel(asOf)}</small>
+                      <strong>{fmt(t.net)}</strong>
+                      {compare && (
+                        <span className="change">
+                          {t.net - totals(store.assets, compare).net >= 0
+                            ? "+"
+                            : ""}
+                          {fmt(t.net - totals(store.assets, compare).net)} ·
+                          Variazione del patrimonio
+                        </span>
+                      )}
                     </div>
-                    {store.assets.map((a) => {
-                      const old =
-                        a.archivedAt && a.archivedAt <= compare
-                          ? 0
-                          : value(a, compare)?.toNumber();
-                      const now =
-                        a.archivedAt && a.archivedAt <= asOf
-                          ? 0
-                          : value(a, asOf)?.toNumber();
-                      const delta =
-                        old !== undefined && now !== undefined
-                          ? (now - old) * (a.category === "debt" ? -1 : 1)
-                          : null;
-                      return (
-                        <div className="comparison-row" key={a.id}>
-                          <span>
-                            <strong>{a.name}</strong>
-                            <small>
-                              {a.archivedAt && a.archivedAt <= asOf
-                                ? "Archiviazione della voce"
-                                : latest(a, asOf)?.note ||
-                                  latest(a, asOf)?.source ||
-                                  "Nessuna rilevazione"}
-                              {a.category === "debt"
-                                ? " · Effetto del debito sul netto"
-                                : ""}
-                            </small>
-                          </span>
-                          <strong>
-                            {delta === null
-                              ? "Non confrontabile"
-                              : `${delta > 0 ? "+" : ""}${fmt(delta)}`}
-                          </strong>
-                        </div>
-                      );
-                    })}
-                    <p className="field-note comparison-note">
-                      Le differenze includono nuovi dati, stime, prezzi e cambi.
-                      I movimenti non modificano automaticamente le valutazioni
-                      e non sono una misura di rendimento.
-                    </p>
                   </section>
-                )}
-                <div className="info-line">
-                  <Info size={17} /> Una differenza di patrimonio non è un
-                  rendimento. Le stime e i nuovi inserimenti possono
-                  modificarla.
-                </div>
-                <section className="card">
-                  <div className="section-heading">
-                    <h2>Il tuo registro</h2>
+                  {(t.missing.length > 0 ||
+                    (compare &&
+                      totals(store.assets, compare).missing.length > 0)) && (
+                    <p className="warning">
+                      Confronto parziale: alcune voci non hanno una rilevazione
+                      o un cambio valido alla data scelta.
+                    </p>
+                  )}
+                  {compare && (
+                    <section className="card comparison-card">
+                      <div className="section-heading">
+                        <h2>Quali voci hanno cambiato il totale?</h2>
+                      </div>
+                      {store.assets.map((a) => {
+                        const old =
+                          a.archivedAt && a.archivedAt <= compare
+                            ? 0
+                            : value(a, compare)?.toNumber();
+                        const now =
+                          a.archivedAt && a.archivedAt <= asOf
+                            ? 0
+                            : value(a, asOf)?.toNumber();
+                        const delta =
+                          old !== undefined && now !== undefined
+                            ? (now - old) * (a.category === "debt" ? -1 : 1)
+                            : null;
+                        return (
+                          <div className="comparison-row" key={a.id}>
+                            <span>
+                              <strong>{a.name}</strong>
+                              <small>
+                                {a.archivedAt && a.archivedAt <= asOf
+                                  ? "Archiviazione della voce"
+                                  : latest(a, asOf)?.note ||
+                                    latest(a, asOf)?.source ||
+                                    "Nessuna rilevazione"}
+                                {a.category === "debt"
+                                  ? " · Effetto del debito sul netto"
+                                  : ""}
+                              </small>
+                            </span>
+                            <strong>
+                              {delta === null
+                                ? "Non confrontabile"
+                                : `${delta > 0 ? "+" : ""}${fmt(delta)}`}
+                            </strong>
+                          </div>
+                        );
+                      })}
+                      <p className="field-note comparison-note">
+                        Le differenze includono nuovi dati, stime, prezzi e
+                        cambi. I movimenti non modificano automaticamente le
+                        valutazioni e non sono una misura di rendimento.
+                      </p>
+                    </section>
+                  )}
+                  <div className="info-line">
+                    <Info size={17} /> Una differenza di patrimonio non è un
+                    rendimento. Le stime e i nuovi inserimenti possono
+                    modificarla.
+                  </div>
+                  <section className="card">
+                    <div className="section-heading">
+                      <h2>Il tuo registro</h2>
+                      <span className="subtle-tag">
+                        Dati originali conservati
+                      </span>
+                    </div>
+                    <div className="timeline">
+                      {[
+                        ...store.assets.flatMap((a) =>
+                          a.valuations.map((v) => ({
+                            id: v.id,
+                            date: v.date,
+                            title: a.name,
+                            description: `${v.source}${v.note ? " · " + v.note : ""}`,
+                            amount: Number(v.amount),
+                            currency: v.currency,
+                            kind: "Rilevazione",
+                          })),
+                        ),
+                        ...store.movements.map((m) => ({
+                          id: m.id,
+                          date: m.date,
+                          title: m.description,
+                          description:
+                            store.assets.find((a) => a.id === m.assetId)
+                              ?.name || "",
+                          amount: Number(m.amount),
+                          currency: m.currency,
+                          kind: "Movimento",
+                        })),
+                        ...store.imports.map((i) => ({
+                          id: i.id,
+                          date: i.date,
+                          title: i.name,
+                          description: `${i.rows} righe · ${i.kind}`,
+                          amount: null,
+                          currency: "EUR",
+                          kind: "Importazione",
+                        })),
+                      ]
+                        .filter((e) => e.date <= asOf)
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .map((e) => (
+                          <div className="timeline-row" key={e.id}>
+                            <span className="timeline-icon">
+                              {e.kind === "Importazione" ? (
+                                <Upload size={17} />
+                              ) : e.kind === "Movimento" ? (
+                                <ArrowLeftRight size={17} />
+                              ) : (
+                                <Clock3 size={17} />
+                              )}
+                            </span>
+                            <div>
+                              <small>
+                                {dateLabel(e.date)} · {e.kind}
+                              </small>
+                              <strong>{e.title}</strong>
+                              <p>{e.description}</p>
+                            </div>
+                            {e.amount !== null && (
+                              <strong>{fmt(e.amount, e.currency)}</strong>
+                            )}
+                          </div>
+                        ))}
+                      {!store.assets.length && <EmptyState onAdd={add} />}
+                    </div>
+                  </section>
+                </>
+              )}
+              {page === "Fonti" && (
+                <>
+                  <section className="card source-manual">
+                    <span className="source-icon">
+                      <BookOpen size={25} />
+                    </span>
+                    <div>
+                      <h2>Il tuo taccuino manuale</h2>
+                      <p>
+                        Saldi, stime e debiti. Li aggiorni tu, quando serve.
+                      </p>
+                      <span className="source-status">
+                        <span className="status-dot" /> Attivo · {active.length}{" "}
+                        voci ·{" "}
+                        {dateList.length
+                          ? `Ultima rilevazione ${dateLabel(dateList.at(-1)!)}`
+                          : "Nessuna rilevazione"}
+                      </span>
+                    </div>
+                    <button className="secondary" onClick={add}>
+                      Aggiungi voce <Plus size={16} />
+                    </button>
+                  </section>
+                  <section className="card import-card">
+                    <div className="section-heading">
+                      <div>
+                        <h2>Da un file, senza ricominciare</h2>
+                        <p>
+                          Importa una fotografia del patrimonio o i movimenti di
+                          un conto.
+                        </p>
+                      </div>
+                      <Upload size={24} className="muted" />
+                    </div>
+                    <div className="import-choices">
+                      <button onClick={() => setModal("import-balances")}>
+                        <FileText size={22} />
+                        <strong>Saldi o posizioni a una data</strong>
+                        <span>Aggiorna le valutazioni, non i versamenti.</span>
+                        <span className="text-button">
+                          Importa CSV <ArrowRight size={16} />
+                        </span>
+                      </button>
+                      <button onClick={() => setModal("import-movements")}>
+                        <ArrowLeftRight size={22} />
+                        <strong>Movimenti</strong>
+                        <span>
+                          Registra le operazioni senza alterare i saldi.
+                        </span>
+                        <span className="text-button">
+                          Importa CSV <ArrowRight size={16} />
+                        </span>
+                      </button>
+                    </div>
+                    <div className="example-links">
+                      Tracciati BauPatrimonio:{" "}
+                      <a
+                        href={
+                          import.meta.env.BASE_URL + "examples/posizioni.csv"
+                        }
+                        download
+                      >
+                        esempio posizioni <Download size={13} />
+                      </a>{" "}
+                      <a
+                        href={import.meta.env.BASE_URL + "examples/saldi.csv"}
+                        download
+                      >
+                        esempio saldi <Download size={13} />
+                      </a>
+                      <a
+                        href={
+                          import.meta.env.BASE_URL + "examples/movimenti.csv"
+                        }
+                        download
+                      >
+                        esempio movimenti <Download size={13} />
+                      </a>
+                    </div>
+                  </section>
+                  <div className="section-title">
+                    <h2>Collegamenti bancari</h2>
                     <span className="subtle-tag">
-                      Dati originali conservati
+                      Solo lettura, quando disponibili
                     </span>
                   </div>
-                  <div className="timeline">
-                    {[
-                      ...store.assets.flatMap((a) =>
-                        a.valuations.map((v) => ({
-                          id: v.id,
-                          date: v.date,
-                          title: a.name,
-                          description: `${v.source}${v.note ? " · " + v.note : ""}`,
-                          amount: Number(v.amount),
-                          currency: v.currency,
-                          kind: "Rilevazione",
-                        })),
-                      ),
-                      ...store.movements.map((m) => ({
-                        id: m.id,
-                        date: m.date,
-                        title: m.description,
-                        description:
-                          store.assets.find((a) => a.id === m.assetId)?.name ||
-                          "",
-                        amount: Number(m.amount),
-                        currency: m.currency,
-                        kind: "Movimento",
-                      })),
-                      ...store.imports.map((i) => ({
-                        id: i.id,
-                        date: i.date,
-                        title: i.name,
-                        description: `${i.rows} righe · ${i.kind}`,
-                        amount: null,
-                        currency: "EUR",
-                        kind: "Importazione",
-                      })),
-                    ]
-                      .filter((e) => e.date <= asOf)
-                      .sort((a, b) => b.date.localeCompare(a.date))
-                      .map((e) => (
-                        <div className="timeline-row" key={e.id}>
-                          <span className="timeline-icon">
-                            {e.kind === "Importazione" ? (
-                              <Upload size={17} />
-                            ) : e.kind === "Movimento" ? (
-                              <ArrowLeftRight size={17} />
-                            ) : (
-                              <Clock3 size={17} />
-                            )}
-                          </span>
-                          <div>
+                  {bankCoverage.map((bank, i) => (
+                    <section className="card bank-card" key={bank.name}>
+                      <span className="bank-logo">
+                        {i ? "TR" : <Landmark size={23} />}
+                      </span>
+                      <div>
+                        <h3>{bank.name}</h3>
+                        <p>
+                          {i
+                            ? "Conto e movimenti: percorso AIS documentato. Titoli non verificati."
+                            : "Conto e movimenti: percorso AIS documentato. Dossier e pensione non verificati."}
+                        </p>
+                        <small>
+                          Nessun collegamento attivo · Aggiornamento manuale o
+                          CSV disponibile
+                        </small>
+                      </div>
+                      <span className="unavailable">Non configurato</span>
+                    </section>
+                  ))}
+                  <div className="info-line">
+                    <ShieldCheck size={18} />
+                    <span>
+                      Non chiediamo password bancarie, PIN o OTP. Nessuna
+                      integrazione simulata.{" "}
+                      <button
+                        className="inline-link"
+                        onClick={() => setModal("coverage")}
+                      >
+                        Leggi copertura e limiti
+                      </button>
+                    </span>
+                  </div>
+                  {store.imports.length > 0 && (
+                    <section className="card">
+                      <div className="section-heading">
+                        <h2>Importazioni eseguite</h2>
+                      </div>
+                      {store.imports.map((i) => (
+                        <div className="import-log" key={i.id}>
+                          <FileText size={18} />
+                          <span>
+                            {i.name}
                             <small>
-                              {dateLabel(e.date)} · {e.kind}
+                              {dateLabel(i.date)} · {i.rows} righe · {i.kind}
                             </small>
-                            <strong>{e.title}</strong>
-                            <p>{e.description}</p>
-                          </div>
-                          {e.amount !== null && (
-                            <strong>{fmt(e.amount, e.currency)}</strong>
-                          )}
+                          </span>
+                          <CheckCircle2 size={17} />
                         </div>
                       ))}
-                    {!store.assets.length && <EmptyState onAdd={add} />}
-                  </div>
-                </section>
-              </>
-            )}
-            {page === "Fonti" && (
-              <>
-                <section className="card source-manual">
-                  <span className="source-icon">
-                    <BookOpen size={25} />
-                  </span>
-                  <div>
-                    <h2>Il tuo taccuino manuale</h2>
-                    <p>Saldi, stime e debiti. Li aggiorni tu, quando serve.</p>
-                    <span className="source-status">
-                      <span className="status-dot" /> Attivo · {active.length}{" "}
-                      voci ·{" "}
-                      {dateList.length
-                        ? `Ultima rilevazione ${dateLabel(dateList.at(-1)!)}`
-                        : "Nessuna rilevazione"}
-                    </span>
-                  </div>
-                  <button className="secondary" onClick={add}>
-                    Aggiungi voce <Plus size={16} />
-                  </button>
-                </section>
-                <section className="card import-card">
-                  <div className="section-heading">
-                    <div>
-                      <h2>Da un file, senza ricominciare</h2>
-                      <p>
-                        Importa una fotografia del patrimonio o i movimenti di
-                        un conto.
-                      </p>
-                    </div>
-                    <Upload size={24} className="muted" />
-                  </div>
-                  <div className="import-choices">
-                    <button onClick={() => setModal("import-balances")}>
-                      <FileText size={22} />
-                      <strong>Saldi o posizioni a una data</strong>
-                      <span>Aggiorna le valutazioni, non i versamenti.</span>
-                      <span className="text-button">
-                        Importa CSV <ArrowRight size={16} />
-                      </span>
-                    </button>
-                    <button onClick={() => setModal("import-movements")}>
-                      <ArrowLeftRight size={22} />
-                      <strong>Movimenti</strong>
-                      <span>
-                        Registra le operazioni senza alterare i saldi.
-                      </span>
-                      <span className="text-button">
-                        Importa CSV <ArrowRight size={16} />
-                      </span>
-                    </button>
-                  </div>
-                  <div className="example-links">
-                    Tracciati BauPatrimonio:{" "}
-                    <a
-                      href={import.meta.env.BASE_URL + "examples/posizioni.csv"}
-                      download
-                    >
-                      esempio posizioni <Download size={13} />
-                    </a>{" "}
-                    <a
-                      href={import.meta.env.BASE_URL + "examples/saldi.csv"}
-                      download
-                    >
-                      esempio saldi <Download size={13} />
-                    </a>
-                    <a
-                      href={import.meta.env.BASE_URL + "examples/movimenti.csv"}
-                      download
-                    >
-                      esempio movimenti <Download size={13} />
-                    </a>
-                  </div>
-                </section>
-                <div className="section-title">
-                  <h2>Collegamenti bancari</h2>
-                  <span className="subtle-tag">
-                    Solo lettura, quando disponibili
-                  </span>
-                </div>
-                {bankCoverage.map((bank, i) => (
-                  <section className="card bank-card" key={bank.name}>
-                    <span className="bank-logo">
-                      {i ? "TR" : <Landmark size={23} />}
-                    </span>
-                    <div>
-                      <h3>{bank.name}</h3>
-                      <p>
-                        {i
-                          ? "Conto e movimenti: percorso AIS documentato. Titoli non verificati."
-                          : "Conto e movimenti: percorso AIS documentato. Dossier e pensione non verificati."}
-                      </p>
-                      <small>
-                        Nessun collegamento attivo · Aggiornamento manuale o CSV
-                        disponibile
-                      </small>
-                    </div>
-                    <span className="unavailable">Non configurato</span>
-                  </section>
-                ))}
-                <div className="info-line">
-                  <ShieldCheck size={18} />
-                  <span>
-                    Non chiediamo password bancarie, PIN o OTP. Nessuna
-                    integrazione simulata.{" "}
-                    <button
-                      className="inline-link"
-                      onClick={() => setModal("coverage")}
-                    >
-                      Leggi copertura e limiti
-                    </button>
-                  </span>
-                </div>
-                {store.imports.length > 0 && (
-                  <section className="card">
-                    <div className="section-heading">
-                      <h2>Importazioni eseguite</h2>
-                    </div>
-                    {store.imports.map((i) => (
-                      <div className="import-log" key={i.id}>
-                        <FileText size={18} />
-                        <span>
-                          {i.name}
-                          <small>
-                            {dateLabel(i.date)} · {i.rows} righe · {i.kind}
-                          </small>
-                        </span>
-                        <CheckCircle2 size={17} />
-                      </div>
-                    ))}
-                  </section>
-                )}
-              </>
-            )}
-            <footer className="footer">
-              <span>
-                <BookOpen size={14} /> BauPatrimonio{" "}
-                <span className="footer-sep">/</span> Il valore della chiarezza.
-              </span>
-              <span>
-                <ShieldCheck size={13} /> Privato, per natura.
-              </span>
-            </footer>
+                    </section>
+                  )}
+                </>
+              )}
+              <footer className="footer">
+                <span>
+                  <BookOpen size={14} /> BauPatrimonio{" "}
+                  <span className="footer-sep">/</span> Il valore della
+                  chiarezza.
+                </span>
+                <span>
+                  <ShieldCheck size={13} /> Privato, per natura.
+                </span>
+              </footer>
+            </fieldset>
           </main>
-          <button className="mobile-add primary" onClick={add}>
+          <button
+            className="mobile-add primary"
+            disabled={mode === "personal" && sync !== "saved"}
+            onClick={add}
+          >
             <Plus size={19} /> Aggiungi voce
           </button>
           <nav className="mobile-nav" aria-label="Navigazione mobile">
@@ -1233,8 +1419,9 @@ function App() {
             <div>
               <strong>Un taccuino personale</strong>
               <p>
-                Archivio {mode === "demo" ? "dimostrativo" : "personale"}. Puoi
-                aprire il tuo archivio Supabase nella sezione qui sotto.
+                {mode === "demo"
+                  ? "Archivio dimostrativo sul dispositivo."
+                  : "Archivio personale online, protetto dal tuo account."}
               </p>
             </div>
           </div>
@@ -1243,9 +1430,8 @@ function App() {
             <div>
               <strong>Gratuito. Senza abbonamenti.</strong>
               <p>
-                Nessun account richiesto per la modalità locale. Per i dati
-                online configura il tuo progetto Supabase gratuito e accedi qui
-                sotto da ciascun dispositivo. Nessun piano a pagamento viene
+                La configurazione online è già inclusa. Accedi con lo stesso
+                account da ciascun dispositivo. Nessun piano a pagamento viene
                 attivato dall’app.
               </p>
               <a
@@ -1257,14 +1443,7 @@ function App() {
               </a>
             </div>
           </div>
-          <CloudPanel
-            store={store}
-            personal={mode === "personal"}
-            onLoad={(s) => {
-              setStore(s);
-              setPersistError("");
-            }}
-          />
+          <CloudPanel personal={mode === "personal"} />
           <h3>Aspetto</h3>
           <div className="theme-options">
             <button
@@ -1324,7 +1503,9 @@ function App() {
                     ) {
                       update(b.data);
                       close();
-                      setToast("Backup ripristinato.");
+                      setToast(
+                        "Ripristino registrato. Controlla lo stato del salvataggio.",
+                      );
                     }
                   } catch (err) {
                     alert((err as Error).message);
@@ -1384,18 +1565,13 @@ function App() {
                 <small>Valori originali e quota di tua competenza.</small>
               </span>
             </button>
-            <button
-              onClick={() => {
-                close();
-                pref.remove("bau-mode");
-                cloudLogout();
-                setMode(null);
-              }}
-            >
+            <button disabled={sync === "saving"} onClick={logout}>
               <LogOut size={18} />
               <span>
-                Torna alla copertina
-                <small>I dati restano nei rispettivi archivi.</small>
+                {mode === "personal"
+                  ? "Esci dall’account"
+                  : "Torna alla copertina"}
+                <small>I dati salvati restano nel tuo archivio.</small>
               </span>
             </button>
             <button className="danger" onClick={() => setModal("delete")}>
@@ -1409,12 +1585,13 @@ function App() {
       )}
       {modal === "delete" && (
         <DeleteModal
+          personal={mode === "personal"}
           onClose={close}
           onDelete={() => {
             update(empty());
             close();
             setToast(
-              "Archivio svuotato nel browser. Controlla eventuali errori di salvataggio online.",
+              "Svuotamento richiesto. Controlla lo stato del salvataggio online.",
             );
           }}
         />
@@ -1947,18 +2124,21 @@ function AssetForm({
   );
 }
 function DeleteModal({
+  personal,
   onClose,
   onDelete,
 }: {
   onClose: () => void;
   onDelete: () => void;
+  personal: boolean;
 }) {
   const [v, setV] = useState("");
   return (
     <Modal title="Elimina i dati di questo archivio" onClose={onClose}>
       <p>
-        L’operazione è definitiva su questo browser. L’altro archivio (personale
-        o demo) non verrà modificato. Scarica prima un backup dal profilo.
+        {personal
+          ? "L’operazione svuota il tuo archivio ONLINE per tutti i tuoi dispositivi dopo il salvataggio riuscito. Non elimina il tuo account. La demo resta separata."
+          : "L’operazione elimina soltanto la demo su questo browser. Il patrimonio personale online non viene modificato."}
       </p>
       <label>
         Scrivi ELIMINA per confermare

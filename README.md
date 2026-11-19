@@ -4,15 +4,17 @@ Taccuino personale del patrimonio, in italiano: **quanto possiedo, quanto devo e
 
 ## Zero abbonamenti, nessun servizio obbligatorio
 
-La modalità locale non richiede servizi esterni. La modalità online opzionale usa il tuo progetto Supabase: va configurato una volta nel browser da Profilo, senza installare Node.js. Nessun analytics, font remoto o API a pagamento. Le chiavi bancarie e le chiavi Supabase privilegiate non vanno nel client. In localStorage rimangono solo preferenze e configurazione pubblica del progetto; token Auth solo in memoria.
+Il patrimonio personale è **online-first**: accesso email/password, lettura automatica da Supabase e salvataggio automatico con revisioni atomiche. URL e chiave pubblica publishable sono configurati in `src/cloud-config.ts`; l’utente non deve copiarli, scegliere un archivio o attivare il cloud. Nessun analytics, font remoto, servizio a pagamento o chiave privilegiata nel client.
 
-**Online:** da ciascun dispositivo accedi allo stesso progetto e utente, poi apri l’archivio online. Le modifiche successive sono salvate sul cloud con revisioni atomiche; nessuna fusione o sincronizzazione realtime. A ogni ricaricamento occorre accedere e aprire il cloud prima di modificare. In modalità locale i browser restano indipendenti. Nessun progetto remoto o abbonamento è stato attivato dall’agente.
+La demo resta separata in IndexedDB e funziona offline. Il patrimonio personale corrente e la sessione Auth restano soltanto in memoria durante l’uso, mentre il documento persistente è nel database Supabase privato. Nessun nuovo archivio personale viene scritto in IndexedDB. A ogni ricaricamento occorre accedere: i token non sono persistiti. Gli archivi locali delle vecchie versioni non vengono cancellati né caricati automaticamente su un account.
+
+**Computer e telefono:** accedi con lo stesso account e l’app carica il medesimo documento remoto. Non è sincronizzazione realtime: «Aggiorna dati online» rilegge i cambiamenti dell’altro dispositivo. Un conflitto blocca le scritture; un errore non viene mostrato come successo. Niente upgrade o acquisti effettuati.
 
 ➡ **Guida utente passo passo:** apri `public/GUIDA.html` oppure **Profilo → Guida passo passo** nell'app. È disponibile anche offline nella build di produzione.
 
 ## Uso online: nessuna installazione di Node.js
 
-**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: restano nel browser oppure nel tuo Supabase privato se lo configuri. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
+**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: sono nel tuo archivio Supabase privato, non pubblicati su GitHub. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. La demo e la guida funzionano anche offline dopo il primo caricamento; il patrimonio personale richiede accesso online.
 
 ### Pubblicazione per il manutentore
 
@@ -111,13 +113,13 @@ I termini Enable Banking prevedono uso gratuito personale limitato ai propri Lin
 
 ## Architettura e riservatezza
 
-Frontend statico pubblico con modalità locale e collegamento opzionale a Supabase Auth/PostgREST. La separazione locale demo/personale **non** separa persone che usano lo stesso profilo browser. La copia locale rimane anche dopo la disconnessione dal cloud: usa dispositivi fidati.
+Frontend statico pubblico + Supabase Auth/PostgREST nel progetto dedicato già esistente. Lo schema `supabase/migrations/202611190001_initial.sql` è stato preparato dal proprietario e verificato dall’agente il 19 novembre 2026: RLS abilitata e forzata, quattro policy, nessun privilegio anon di lettura o esecuzione save, RPC SECURITY INVOKER e confronto atomico di revisione. Non è stato rieseguito SQL su tabelle esistenti. URL Auth/redirect impostati al sito Pages; signup pubblico disabilitato con utente confermato esistente. Nessuna modifica all’altro progetto dell’utente.
 
-Lo schema `supabase/migrations/202611190001_initial.sql` è collegato al client opzionale: JSONB per proprietario, revisioni, RLS e RPC atomica SECURITY INVOKER. Lo schema è stato testato su PostgreSQL/PGlite con due utenti; il client REST è coperto da test mock, **non collaudato contro un progetto Supabase reale**. Guida completa in `public/GUIDA.html#cloud`: progetto Free dedicato (non modificare BauSplit), SQL Editor, utente Auth, Project URL e chiave pubblica publishable/anon, accesso dall’app. La connessione Supabase di Arena non è attiva.
+Un primo login senza documento inizializza un archivio vuoto: mai caricamento implicito di demo o vecchi dati locali. Credenziali inserite solo nell’app e inviate a Supabase Auth. Non sono state recuperate password degli utenti né eseguiti accessi reali al loro posto. La chiave **publishable** è volutamente pubblica: non è un segreto bancario o service_role. Il controllo è RLS, non l’occultamento della chiave. Non è cifratura end-to-end: l’amministratore Supabase può amministrare i dati.
 
-Il piano Free può sospendere progetti inattivi e impone limiti: consultare https://supabase.com/pricing prima dell’attivazione. Non attivare upgrade/add-on, non superare i progetti attivi disponibili. Nessuna promessa di disponibilità continua o backup gestito gratuito.
+Le scritture sono serializzate e verificate per revisione. Le modifiche personali sono bloccate durante salvataggio o errore. Stato «Salvato online» solo dopo risposta positiva. In caso di errore si conservano modifiche non salvate in memoria, esportabili senza promemoria di backup. Il retry mantiene la revisione attesa; una richiesta già registrata ma senza risposta può generare conflitto al retry: nessuna sovrascrittura, rilettura con conferma dopo riconciliazione. Uscita e reload possono perdere il contenuto non salvato: avviso prima di abbandonare; uscita applicativa e rilettura chiedono conferma. Password/access token/refresh token non vengono scritti nel browser. Il refresh in-sessione usa solo token in memoria; alla scadenza non rinnovabile si richiede nuovo accesso. Le API usano `no-store`, non sono intercettate dal service worker.
 
-Il token Auth e la password non sono persistiti. Dopo login occorre scegliere esplicitamente apertura del cloud o primo salvataggio (solo se remoto vuoto). Le scritture sono serializzate e verificano la revisione; un conflitto ferma il cloud senza sovrascrivere la copia remota. Errori/rete assente lasciano i dati locali e mostrano un avviso; niente retry invisibile o unione automatica. Rileggere il cloud sostituisce le modifiche locali. Le API sono sempre `no-store`, fuori dal service worker. Non inserire `service_role`, chiavi secret o chiavi bancarie nel browser. L’archivio Supabase non è ancora un backend bancario: nessun connettore AIS o token bancario è implementato.
+Il client è testato con API simulate e il DB con PostgreSQL/PGlite a due identità. Sul progetto reale sono stati verificati metadati di sicurezza e Auth, **non** eseguiti login/salvataggi con credenziali reali dell’utente. Guida senza passaggi tecnici in `public/GUIDA.html#cloud`. Supabase Free ha limiti e può sospendere i progetti inattivi: https://supabase.com/pricing. Nessun upgrade o add-on automatico nell’app. Il backend bancario Fideuram è ancora da implementare: l’archivio online non è un connettore AIS.
 
 La PWA cache-a esclusivamente file statici di build, guida e CSV di esempio; gli archivi finanziari sono dati applicativi espliciti IndexedDB, non cache HTTP. Le cache di altre app sullo stesso dominio non vengono eliminate. Percorso/base e hash del contenuto versionano la shell offline.
 
@@ -128,7 +130,7 @@ Header consigliati per hosting sotto il tuo controllo: `X-Content-Type-Options: 
 1. Profilo → **Scarica backup strutturato**. JSON contiene dati finanziari in chiaro: conservalo in un luogo privato.
 2. Trasferiscilo tra i tuoi dispositivi tramite un mezzo sotto il tuo controllo.
 3. Sul destinatario entra nello stesso tipo di archivio → **Ripristina backup JSON** → conferma sostituzione. Nessuna fusione automatica: conserva prima un backup della copia che stai sostituendo.
-4. Se il cloud è aperto, le modifiche (incluso svuotamento e ripristino) vengono inviate anche al cloud; controlla gli errori. Se il cloud è scollegato, viene modificata soltanto la copia locale. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
+4. Nel patrimonio personale svuotamento e ripristino modificano il documento ONLINE: controlla il salvataggio riuscito. Nella demo rimangono locali. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio e non elimina l’account Auth. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
 
 ## Test eseguiti e riproducibili, senza servizi
 
@@ -163,5 +165,5 @@ src/Portfolio.tsx          strumenti manuali e riconciliazione dossier
 src/validation.ts          validazione backup
 public/GUIDA.html          istruzioni utente offline
 scripts/build-sw.mjs      precache statica con percorso e hash di contenuto
-supabase/                 schema server opzionale, non collegato al frontend
+supabase/                 schema archivio online, RLS e test isolamento
 ```

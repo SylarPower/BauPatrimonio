@@ -1,3 +1,4 @@
+import { mockCloud, signIn } from "./cloud-helpers";
 import { test, expect } from "@playwright/test";
 for (const width of [320, 390, 768, 1440])
   for (const theme of ["light", "amoled"])
@@ -59,20 +60,16 @@ for (const width of [320, 390, 768, 1440])
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+      await mockCloud(page);
       await page
         .getByRole("button", { name: "Passa al mio patrimonio" })
         .click();
-      await page.getByLabel("Apri profilo e impostazioni").click();
-      const panel = page.locator(".cloud-panel");
-      await expect(panel.getByLabel("Project URL")).toBeVisible();
-      await expect(
-        panel.getByRole("link", { name: "Guida Supabase passo passo" }),
-      ).toHaveAttribute("href", /GUIDA.html#cloud$/);
-      const cloud = await panel.evaluate((el) => {
-        const inputs = [
-          ...el.querySelectorAll("input:not([type=checkbox])"),
-        ].map((e) => e.getBoundingClientRect());
-        const box = el.getBoundingClientRect();
+      const auth = page.locator(".auth-card");
+      const cloud = await auth.evaluate((el) => {
+        const box = el.getBoundingClientRect(),
+          inputs = [...el.querySelectorAll("input")].map((e) =>
+            e.getBoundingClientRect(),
+          );
         return {
           inside: inputs.every(
             (b) => b.left >= box.left + 15 && b.right <= box.right - 15,
@@ -84,6 +81,12 @@ for (const width of [320, 390, 768, 1440])
       expect(cloud.inside).toBe(true);
       expect(cloud.overlap).toBe(false);
       expect(cloud.touch).toBe(true);
+      await signIn(page);
+      await page.getByLabel("Apri profilo e impostazioni").click();
+      await expect(
+        page.getByRole("link", { name: "Guida archivio online" }),
+      ).toHaveAttribute("href", /GUIDA.html#cloud$/);
+      await expect(page.getByLabel("Project URL")).toHaveCount(0);
       if (width === 390 && theme === "light")
         await page.screenshot({
           path: "test-results/cloud-spacing.png",

@@ -68,16 +68,16 @@
   ><a href="./">← Torna all’app</a>
   <h1>Il tuo patrimonio, senza abbonamenti.</h1>
   <p>
-    Guida pratica dell’app gratuita accessibile dal web. Nessun account, carta
-    di credito, database ospitato o API bancaria è necessario. Tutti i calcoli e
-    le importazioni avvengono nel browser.
+    Guida pratica dell’app gratuita accessibile dal web. Il patrimonio personale
+    viene salvato online su Supabase, protetto dal tuo account. La demo è
+    separata e non viene caricata nel tuo archivio.
   </p>
   <aside>
-    <strong>Da sapere prima di iniziare</strong><br />Senza configurazione
-    cloud, i dati stanno nel browser, non nel sito. Telefono e computer hanno
-    copie indipendenti. Cancellare i dati del browser può cancellare il
-    patrimonio: scarica regolarmente il backup JSON. «Nascondi importi» non
-    cifra i dati.
+    <strong>Da sapere prima di iniziare</strong><br />Apri l’app, accedi e
+    ritrovi i tuoi dati. Non devi configurare URL o chiavi. Controlla lo stato
+    «Salvato online» prima di chiudere. In caso di errore le modifiche non
+    salvate restano soltanto nella pagina aperta: non chiuderla. «Nascondi
+    importi» è una protezione visiva, non una cifratura.
   </aside>
   <h2>1. Apri l’app, senza installare programmi</h2>
   <ol>
@@ -87,7 +87,9 @@
       terminale.
     </li>
     <li>
-      Scegli «Inizia il mio patrimonio» oppure «Prova con dati di esempio».
+      Scegli «Inizia il mio patrimonio» e accedi con email e password
+      dell’utente BauPatrimonio già creato. Il tuo archivio viene caricato
+      automaticamente. «Prova con dati di esempio» non richiede accesso.
     </li>
     <li>
       Salva il sito nei preferiti. GitHub Pages distribuisce l’app; i tuoi
@@ -194,166 +196,97 @@
     </li>
   </ol>
   <h2>6. Usa gli stessi dati su due dispositivi</h2>
-  <ol>
-    <li>
-      Sul dispositivo aggiornato: Profilo in alto a destra →
-      <strong>Scarica backup strutturato</strong>.
-    </li>
-    <li>
-      Trasferisci il JSON con un mezzo sotto il tuo controllo (per esempio cavo,
-      AirDrop o condivisione locale). Il JSON contiene dati finanziari in
-      chiaro: non metterlo nel repository o in un link pubblico.
-    </li>
-    <li>
-      Sull’altro dispositivo scegli il patrimonio personale → Profilo →
-      <strong>Ripristina backup JSON</strong>. Conferma la sostituzione solo
-      dopo aver esportato eventuali modifiche locali da conservare.
-    </li>
-    <li>
-      Non modificare contemporaneamente entrambe le copie: non esiste fusione o
-      sincronizzazione automatica. Il backup demo si ripristina solo nella demo,
-      quello personale solo nell’archivio personale.
-    </li>
-  </ol>
-  <h2 id="cloud">Archivio online con Supabase, senza Node.js</h2>
   <p>
-    Il collegamento cloud è implementato ma non attivato su un progetto reale.
-    L’attivazione si svolge interamente dal browser. Se hai già creato un
-    progetto dedicato a BauPatrimonio, apri quello: non crearne un altro. Non
-    usare il database di BauSplit, per evitare modifiche ad altre app.
+    Apri il sito e accedi con lo stesso account sul computer e sul telefono: i
+    dati vengono caricati online, senza trasferire JSON o configurare chiavi. Se
+    una pagina è già aperta, «Aggiorna dati online» legge la versione più
+    recente. I backup restano un’esportazione facoltativa dal Profilo, non il
+    meccanismo di sincronizzazione.
+  </p>
+  <h2 id="cloud">
+    Il tuo patrimonio online: solo accesso, nessuna configurazione
+  </h2>
+  <p>
+    Il progetto Supabase di BauPatrimonio è già configurato. Sono stati
+    verificati schema dell’archivio, Row Level Security e funzione di
+    salvataggio; l’URL del sito Auth è impostato su GitHub Pages. Le
+    registrazioni pubbliche sono disabilitate: si usa l’utente personale già
+    creato.
   </p>
   <ol>
+    <li>Apri l’app e scegli <strong>Inizia il mio patrimonio</strong>.</li>
     <li>
-      Accedi alla
-      <a href="https://supabase.com/dashboard">dashboard Supabase</a> e apri il
-      progetto BauPatrimonio dedicato. Solo se non esiste, crealo in
-      un’organizzazione sul piano <strong>Free ($0)</strong>, preferibilmente in
-      una regione UE. Non selezionare Pro, add-on, PITR o upgrade. Conserva la
-      password database privatamente: non serve inserirla nell’app.
+      Inserisci email e password del tuo utente BauPatrimonio. Non sono le
+      credenziali della banca o la password del database. Il caricamento del tuo
+      archivio è automatico; se è il tuo primo accesso e non ci sono dati
+      remoti, viene creato un archivio vuoto, mai la demo o una vecchia copia
+      locale.
     </li>
     <li>
-      Il piano Free indica massimo due progetti attivi: se hai già raggiunto il
-      limite, fermati, non attivare un piano a pagamento. Il provider può
-      sospendere i progetti inattivi; puoi riattivarli dalla dashboard.
-      <a href="https://supabase.com/pricing">Condizioni e limiti ufficiali</a>,
-      consultati il 19 novembre 2026.
+      Aggiungi o aggiorna una voce. In alto vedrai prima
+      <strong>Salvataggio online in corso…</strong> e, solo dopo risposta
+      positiva del server, <strong>Salvato online</strong>.
     </li>
     <li>
-      Nel progetto dedicato non ancora configurato apri
-      <strong>SQL Editor → New query</strong>. Apri su GitHub il
-      <a
-        href="https://github.com/SylarPower/BauPatrimonio/blob/arena/dcc936f9-baupatrimonio/supabase/migrations/202611190001_initial.sql"
-        >file SQL di BauPatrimonio</a
-      >, copia tutto il contenuto e premi Run nell’editor Supabase. Eseguilo una
-      sola volta. Deve riuscire senza errori; non disattivare Row Level
-      Security. In Table Editor deve comparire <code>public.vaults</code> con
-      RLS abilitata. Non usare «Disable RLS» e non aggiungere policy pubbliche.
+      Sul telefono apri lo stesso sito e accedi con lo stesso utente. Ritrovi
+      l’archivio online senza copiare file, chiavi o URL. Dopo un ricaricamento
+      della pagina viene richiesto un nuovo accesso: la sessione resta in
+      memoria, non viene scritta nel browser.
     </li>
     <li>
-      In
-      <strong>Authentication → Users → Add user → Create new user</strong> crea
-      il tuo utente con email e password personale; usa la conferma prevista
-      dalla dashboard. Non inviare queste credenziali in chat. Puoi disabilitare
-      le nuove registrazioni pubbliche nelle impostazioni Auth: è un’app
-      personale. Questo utente appartiene alla tua app: non è automaticamente
-      l’account con cui entri nella dashboard Supabase e non è l’account
-      Fideuram. Se crei l’utente dalla dashboard, verifica che risulti
-      confermato; puoi usare «Auto Confirm User» per il tuo utente creato
-      dall’amministratore. Non abilitare conferma automatica per registrazioni
-      pubbliche.
+      Se hai già l’app aperta su un altro dispositivo, usa
+      <strong>Aggiorna dati online</strong> per leggere le modifiche remote. Non
+      è sincronizzazione realtime. Evita modifiche contemporanee da più
+      dispositivi: la revisione del documento blocca le sovrascritture
+      accidentali.
     </li>
     <li>
-      Da <strong>Connect / Project Settings → API Keys</strong> copia il Project
-      URL e soltanto la chiave <strong>publishable</strong> oppure la vecchia
-      <strong>anon</strong>. Il Project URL ha forma
-      <code>https://riferimento.supabase.co</code>, non l’indirizzo della
-      dashboard né l’host <code>db.…</code>. Nei pannelli recenti l’URL è anche
-      in Project Settings → Data API. Non usare mai secret o service_role. La
-      chiave pubblica identifica il progetto, non sostituisce il login: sono RLS
-      e utente autenticato a proteggere i dati.
-    </li>
-    <li>
-      Apri il tuo patrimonio nell’app → Profilo → Il tuo archivio online.
-      Espandi la configurazione, inserisci URL e chiave pubblica, poi accedi con
-      l’utente Auth creato sopra.
-    </li>
-    <li>
-      La prima volta conferma e scegli
-      <strong>Crea il primo salvataggio online</strong>. Se l’archivio remoto
-      esiste già, l’app non lo sovrascrive: scegli
-      <strong>Apri / rileggi archivio online</strong>. Questa azione sostituisce
-      la copia visualizzata, non unisce dati.
-    </li>
-    <li>
-      Le modifiche successive vengono inviate al cloud, mantenendo una copia nel
-      browser. Sul telefono o dopo un ricaricamento accedi e apri l’archivio
-      online prima di modificare. La sessione resta solo in memoria e scade; non
-      è sincronizzazione realtime. Non modificare due copie contemporaneamente.
+      Da Profilo scegli <strong>Esci dall’account</strong> per chiudere la
+      sessione e rimuovere i dati personali dalla memoria dell’app. I dati già
+      salvati restano online.
     </li>
   </ol>
+  <h3>Se il salvataggio non riesce</h3>
   <p>
-    Un conflitto, una sessione scaduta o un errore di rete non sovrascrivono il
-    cloud: l’app conserva la copia locale e segnala l’errore. Prima di rileggere
-    il cloud riconcilia le modifiche rimaste solo locali: la rilettura le
-    sostituisce. Il progetto cloud non è un backup garantito; il piano Free può
-    essere sospeso e non offre la stessa conservazione dei piani a pagamento.
-    Nessun promemoria di backup è attivato.
+    Le modifiche in sospeso restano in questa pagina, non sono considerate
+    salvate e non vengono scritte come archivio personale locale. Le nuove
+    modifiche sono bloccate fino alla risoluzione dell’errore.
+    <strong>Non chiudere o ricaricare la pagina.</strong> Puoi scaricare una
+    copia delle modifiche non salvate. Dopo un errore di rete puoi provare
+    «Riprova salvataggio»: viene usata la stessa revisione attesa, quindi non
+    può sostituire una nuova versione remota.
   </p>
-  <h3>Come verificare che funzioni</h3>
-  <ol>
-    <li>
-      Dopo il primo salvataggio, controlla lo stato «Archivio online aperto» e
-      l’assenza di errori. In Table Editor → vaults deve esserci la riga del tuo
-      utente; non condividere schermate del documento, contiene dati finanziari.
-    </li>
-    <li>
-      Per una prova senza rischiare dati reali, configura il cloud prima di
-      inserire il patrimonio: crea una voce di prova dal valore riconoscibile,
-      ad esempio 1 EUR.
-    </li>
-    <li>
-      Su un secondo browser o telefono configura lo stesso URL e chiave
-      pubblica, accedi con lo stesso utente Auth e scegli «Apri / rileggi
-      archivio online». Devi vedere la voce di prova. Non scegliere «Crea il
-      primo salvataggio» sul secondo dispositivo.
-    </li>
-    <li>
-      Modifica o rimuovi la voce di prova da un solo dispositivo; sull’altro
-      rileggi il cloud. Da quel momento puoi iniziare a inserire i dati reali.
-    </li>
-  </ol>
-  <h3>Se qualcosa non funziona</h3>
-  <ul>
-    <li>
-      <strong>Accesso non riuscito:</strong> verifica utente in Authentication →
-      Users, conferma email, password Auth e corrispondenza fra URL e chiave
-      dello stesso progetto. Il login all’app non usa la password del database.
-    </li>
-    <li>
-      <strong>Accesso riuscito ma apertura/salvataggio falliti:</strong>
-      verifica che lo script SQL sia terminato senza errori, che esista vaults
-      con RLS e che il progetto non sia sospeso. Non risolvere disattivando RLS.
-    </li>
-    <li>
-      <strong>«Relation already exists» eseguendo SQL:</strong> lo schema
-      potrebbe essere già presente. Non cancellare tabelle né rieseguire a
-      tentativi: fermati e richiedi una verifica della configurazione esistente.
-    </li>
-    <li>
-      <strong>Cloud vuoto sul secondo dispositivo:</strong> verifica stesso
-      progetto e stesso utente Auth; utenti diversi hanno archivi separati per
-      sicurezza.
-    </li>
-    <li>
-      <strong>Sessione scaduta o conflitto:</strong> prima conserva o riconcilia
-      le modifiche locali rimaste in sospeso, poi accedi e rileggi il cloud. La
-      rilettura sostituisce il contenuto locale: non fonde le copie.
-    </li>
-  </ul>
   <p>
-    Questa procedura attiva soltanto l’archivio dei tuoi dati. Non occorrono
-    Edge Functions, chiavi bancarie, collegamenti GitHub–Supabase o servizi a
-    pagamento per il salvataggio. Non attiva la sincronizzazione con Fideuram.
+    «Aggiorna dati online» sostituisce il contenuto visualizzato con quello
+    remoto: in presenza di modifiche non salvate chiede conferma. Non unisce due
+    copie. Se il server aveva già registrato la richiesta ma la risposta si è
+    persa, una ripetizione può essere bloccata per revisione diversa: conserva
+    la copia, rileggi il cloud e confronta i dati.
+  </p>
+  <h3>Se l’accesso non riesce</h3>
+  <p>
+    Verifica connessione, email e password dell’utente dell’app. Se hai
+    dimenticato la password, il proprietario del progetto può gestire il
+    recupero dalla dashboard Supabase → Authentication → Users. Non inviare
+    password o chiavi in chat. Il piano Free può sospendere progetti inattivi:
+    il proprietario può riattivarli dalla dashboard. Non acquistare upgrade o
+    add-on;
+    <a href="https://supabase.com/pricing">limiti ufficiali del piano</a>.
+  </p>
+  <p>
+    Questa modalità non recupera né carica automaticamente archivi personali
+    salvati dalle vecchie versioni nel browser: restano intatti e separati, per
+    non attribuire dati locali a un account sbagliato. Puoi ripristinare un
+    backup JSON dal Profilo; il ripristino sostituisce l’archivio online dopo
+    conferma e viene salvato con gli stessi controlli di revisione.
+  </p>
+  <p>
+    La configurazione tecnica è già inclusa nell’app: non devi eseguire SQL,
+    inserire chiavi o premere «Apri cloud». La chiave pubblica identifica il
+    progetto, ma non autorizza l’accesso ai dati: sono autenticazione e RLS a
+    proteggerli. Non è cifratura end-to-end: il proprietario del progetto
+    conserva i poteri amministrativi sul database. Nessun connettore Fideuram è
+    attivato da questa procedura.
   </p>
   <h2>Grafici del solo portafoglio e rendimento</h2>
   <p>
@@ -410,12 +343,14 @@
   <p>
     La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
     import PDF/XLSX o sincronizzazione realtime. Il sito online non implica da
-    solo che i dati siano salvati online: occorre configurare Supabase e aprire
-    l’archivio dal Profilo su ogni dispositivo.
+    solo che i dati siano salvati online: occorre accedere all’account e
+    attendere lo stato «Salvato online».
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
-    stati attivati progetti Supabase, conti reali o abbonamenti dall’agente.
-    GitHub Pages risulta attivo sulla cartella docs del branch corrente.
+    stati acquistati abbonamenti o collegati conti bancari reali. La
+    configurazione Auth del progetto Supabase esistente è stata completata
+    dall’agente. GitHub Pages risulta attivo sulla cartella docs del branch
+    corrente.
   </footer>
 </html>

@@ -1,3 +1,4 @@
+import { mockCloud, signIn } from "./cloud-helpers";
 import { test, expect } from "@playwright/test";
 for (const width of [320, 1440])
   test(`portafoglio aggregato, rendimento e layout ${width}`, async ({
@@ -39,57 +40,63 @@ for (const width of [320, 1440])
       page.getByRole("heading", { name: "Rendimento degli investimenti" }),
     ).toHaveCount(0);
   });
-test("cloud dal profilo: nessun upload demo, primo salvataggio solo dopo consenso", async ({
+test("online automatico, demo separata e nessuna configurazione", async ({
   page,
 }) => {
-  let writes = 0;
-  await page.route("https://testproject.supabase.co/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.includes("/token"))
-      return route.fulfill({
-        json: { access_token: "test-token", expires_in: 3600 },
-      });
-    if (path.includes("/vaults")) return route.fulfill({ json: [] });
-    if (path.includes("/save_vault")) {
-      writes++;
-      return route.fulfill({ json: 1 });
-    }
-    return route.abort();
-  });
+  const cloud = await mockCloud(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
-  await page.getByLabel("Apri profilo e impostazioni").click();
-  await expect(
-    page.getByText("La demo non viene caricata.", { exact: false }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Chiudi", exact: true }).click();
+  expect(cloud.writes).toBe(0);
   await page.getByRole("button", { name: "Passa al mio patrimonio" }).click();
+  await expect(page.getByLabel("Project URL")).toHaveCount(0);
+  await signIn(page);
+  expect(cloud.writes).toBe(1);
+  expect(cloud.document?.assets).toHaveLength(0);
   await page.getByLabel("Apri profilo e impostazioni").click();
-  await page.getByLabel("Project URL").fill("https://testproject.supabase.co");
-  await page
-    .getByLabel("Chiave pubblica publishable / anon")
-    .fill("sb_publishable_test");
-  await page.getByLabel("Email", { exact: true }).fill("test@example.test");
-  await page.getByLabel("Password Supabase Auth").fill("not-a-real-password");
-  await page.getByRole("button", { name: "Accedi", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Crea il primo salvataggio online" }),
-  ).toBeDisabled();
-  expect(writes).toBe(0);
-  await page
-    .getByRole("checkbox", {
-      name: "Confermo l’apertura del cloud",
-      exact: false,
-    })
-    .check();
-  await page
-    .getByRole("button", { name: "Crea il primo salvataggio online" })
-    .click();
-  await expect(
-    page.getByText("Primo salvataggio online riuscito.", { exact: false }),
+    page.getByText("Archivio online privato", { exact: true }),
   ).toBeVisible();
-  expect(writes).toBe(1);
+  await expect(
+    page.getByRole("button", { name: "Apri / rileggi archivio online" }),
+  ).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.stringify(localStorage));
   expect(saved).not.toContain("test-token");
   expect(saved).not.toContain("not-a-real-password");
+  await page
+    .getByRole("button", { name: "Esci dall’account", exact: false })
+    .click();
+  await expect(page.locator(".net-amount")).toHaveCount(0);
+});
+test("conflitto conserva la pagina, blocca modifiche e non dichiara salvato", async ({
+  page,
+}) => {
+  const cloud = await mockCloud(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await signIn(page);
+  cloud.fail = true;
+  await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
+  await page
+    .getByRole("button", { name: "Conto corrente e liquidità" })
+    .click();
+  await page.getByLabel("Nome della voce").fill("Non salvato");
+  await page.getByLabel("Saldo contabile").fill("123");
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("conflitto");
+  await expect(page.locator(".net-amount")).toContainText("123,00");
+  await expect(page.getByText("Salvato online", { exact: true })).toHaveCount(
+    0,
+  );
+  expect(cloud.document?.assets).toHaveLength(0);
+  await expect(page.locator(".online-workspace")).toHaveAttribute(
+    "disabled",
+    "",
+  );
+  await expect(
+    page.getByRole("button", { name: "Scarica modifiche non salvate" }),
+  ).toBeEnabled();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Aggiorna dati online" }).click();
+  await expect(page.getByText("Salvato online", { exact: true })).toBeVisible();
+  await expect(page.locator(".net-amount")).toContainText("0,00");
 });

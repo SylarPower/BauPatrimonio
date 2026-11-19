@@ -1,3 +1,4 @@
+import { mockCloud, signIn } from "./cloud-helpers";
 import { test, expect } from "@playwright/test";
 test("welcome, demo corretta, privacy e archivi separati", async ({ page }) => {
   await page.goto("/");
@@ -16,7 +17,9 @@ test("welcome, demo corretta, privacy e archivi separati", async ({ page }) => {
   await page
     .getByRole("button", { name: "Mostra importi", exact: true })
     .click();
+  await mockCloud(page);
   await page.getByRole("button", { name: "Passa al mio patrimonio" }).click();
+  await signIn(page);
   await expect(page.locator(".net-amount")).toContainText("0,00");
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page
@@ -26,7 +29,9 @@ test("welcome, demo corretta, privacy e archivi separati", async ({ page }) => {
   await page.getByLabel("Saldo contabile").fill("1234,56");
   await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(page.locator(".net-amount")).toContainText("1.234,56");
+  await expect(page.getByText("Salvato online", { exact: true })).toBeVisible();
   await page.reload();
+  await signIn(page);
   await expect(page.locator(".net-amount")).toContainText("1.234,56");
 });
 for (const width of [320, 390, 1440])
