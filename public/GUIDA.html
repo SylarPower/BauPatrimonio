@@ -73,10 +73,11 @@
     le importazioni avvengono nel browser.
   </p>
   <aside>
-    <strong>Da sapere prima di iniziare</strong><br />I dati stanno nel browser,
-    non nel sito. Telefono e computer hanno copie indipendenti. Cancellare i
-    dati del browser può cancellare il patrimonio: scarica regolarmente il
-    backup JSON. «Nascondi importi» non cifra i dati.
+    <strong>Da sapere prima di iniziare</strong><br />Senza configurazione
+    cloud, i dati stanno nel browser, non nel sito. Telefono e computer hanno
+    copie indipendenti. Cancellare i dati del browser può cancellare il
+    patrimonio: scarica regolarmente il backup JSON. «Nascondi importi» non
+    cifra i dati.
   </aside>
   <h2>1. Apri l’app, senza installare programmi</h2>
   <ol>
@@ -90,7 +91,8 @@
     </li>
     <li>
       Salva il sito nei preferiti. GitHub Pages distribuisce l’app; i tuoi
-      importi restano nel browser e non vengono salvati nel repository.
+      importi non vengono salvati nel repository. Per l’archivio online segui la
+      sezione Supabase più sotto.
     </li>
   </ol>
   <h2>2. Installazione facoltativa sul telefono</h2>
@@ -213,6 +215,100 @@
       quello personale solo nell’archivio personale.
     </li>
   </ol>
+  <h2 id="cloud">Archivio online con Supabase, senza Node.js</h2>
+  <p>
+    Il collegamento cloud è implementato ma non attivato su un progetto reale.
+    L’attivazione si svolge interamente dal browser. Non usare il database di
+    BauSplit: crea un progetto dedicato per evitare modifiche ad altre app.
+  </p>
+  <ol>
+    <li>
+      Accedi alla dashboard Supabase e crea un progetto in un’organizzazione sul
+      piano <strong>Free ($0)</strong>, preferibilmente in una regione UE. Non
+      selezionare Pro, add-on, PITR o upgrade. Conserva la password database
+      privatamente: non serve inserirla nell’app.
+    </li>
+    <li>
+      Il piano Free indica massimo due progetti attivi: se hai già raggiunto il
+      limite, fermati, non attivare un piano a pagamento. Il provider può
+      sospendere i progetti inattivi; puoi riattivarli dalla dashboard.
+      <a href="https://supabase.com/pricing">Condizioni e limiti ufficiali</a>,
+      consultati il 19 novembre 2026.
+    </li>
+    <li>
+      Nel progetto NUOVO apri <strong>SQL Editor → New query</strong>. Apri su
+      GitHub il
+      <a
+        href="https://github.com/SylarPower/BauPatrimonio/blob/arena/dcc936f9-baupatrimonio/supabase/migrations/202611190001_initial.sql"
+        >file SQL di BauPatrimonio</a
+      >, copia tutto il contenuto e premi Run nell’editor Supabase. Eseguilo una
+      sola volta. Deve riuscire senza errori; non disattivare Row Level
+      Security.
+    </li>
+    <li>
+      In
+      <strong>Authentication → Users → Add user → Create new user</strong> crea
+      il tuo utente con email e password personale; usa la conferma prevista
+      dalla dashboard. Non inviare queste credenziali in chat. Puoi disabilitare
+      le nuove registrazioni pubbliche nelle impostazioni Auth: è un’app
+      personale.
+    </li>
+    <li>
+      Da <strong>Connect / Project Settings → API Keys</strong> copia il Project
+      URL e soltanto la chiave <strong>publishable</strong> oppure la vecchia
+      <strong>anon</strong>. Non usare mai secret o service_role.
+    </li>
+    <li>
+      Apri il tuo patrimonio nell’app → Profilo → Il tuo archivio online.
+      Espandi la configurazione, inserisci URL e chiave pubblica, poi accedi con
+      l’utente Auth creato sopra.
+    </li>
+    <li>
+      La prima volta conferma e scegli
+      <strong>Crea il primo salvataggio online</strong>. Se l’archivio remoto
+      esiste già, l’app non lo sovrascrive: scegli
+      <strong>Apri / rileggi archivio online</strong>. Questa azione sostituisce
+      la copia visualizzata, non unisce dati.
+    </li>
+    <li>
+      Le modifiche successive vengono inviate al cloud, mantenendo una copia nel
+      browser. Sul telefono o dopo un ricaricamento accedi e apri l’archivio
+      online prima di modificare. La sessione resta solo in memoria e scade; non
+      è sincronizzazione realtime. Non modificare due copie contemporaneamente.
+    </li>
+  </ol>
+  <p>
+    Un conflitto, una sessione scaduta o un errore di rete non sovrascrivono il
+    cloud: l’app conserva la copia locale e segnala l’errore. Prima di rileggere
+    il cloud riconcilia le modifiche rimaste solo locali: la rilettura le
+    sostituisce. Il progetto cloud non è un backup garantito; il piano Free può
+    essere sospeso e non offre la stessa conservazione dei piani a pagamento.
+    Nessun promemoria di backup è attivato.
+  </p>
+  <h2>Grafici del solo portafoglio e rendimento</h2>
+  <p>
+    In Insight scegli <strong>Investimenti</strong>: andamento, composizione e
+    confronto includono tutti gli investimenti insieme, senza liquidità,
+    pensione, case o debiti. I dettagli del dossier non vengono contati due
+    volte. Apri «Leggi tra i numeri» per confronto tra date e qualità dei dati.
+  </p>
+  <p>
+    Il rendimento usa Modified Dietz, non annualizzato, e viene mostrato solo
+    dopo conferma della completezza dei flussi. Servono valutazioni di tutti gli
+    investimenti nelle due date e flussi EUR della tua quota. Acquisti e vendite
+    registrati ora includono i costi; i movimenti precedenti o importati non
+    vengono classificati automaticamente. Le opzioni «Flussi e metodo di
+    calcolo» consentono di classificarli e aggiungere flussi mancanti senza
+    modificare i saldi. Flussi fra due investimenti si compensano, non sono
+    ingressi netti. Non duplicare acquisti o vendite già registrati.
+  </p>
+  <p>
+    La percentuale non è un rendimento certificato o fiscale: include soltanto
+    costi, imposte e proventi effettivamente rappresentati nei dati.
+    Archiviazioni nel periodo, dati mancanti o capitale ponderato non positivo
+    impediscono il risultato o la percentuale. L’app non inventa un rendimento
+    da una semplice differenza di valore.
+  </p>
   <h2>7. Banche: cosa è stato verificato</h2>
   <p>
     Verifica delle fonti ufficiali: 19 novembre 2026. Fideuram dispone di un
@@ -235,20 +331,21 @@
   <p>
     <strong>GitHub Pages da solo non è un backend bancario.</strong> Per
     automatizzare l’accesso servirebbe un servizio server riservato aggiuntivo.
-    Non è stato attivato e richiede una scelta separata. Le posizioni titoli,
-    ETF e previdenza non risultano coperte dalle API AIS consultate. Restano
+    Non è stato attivato. L’archivio Supabase descritto sopra salva i tuoi dati,
+    ma non implementa ancora il connettore bancario. Le posizioni titoli, ETF e
+    previdenza non risultano coperte dalle API AIS consultate. Restano
     disponibili subito manuale e CSV. Il dettaglio di fonti e limiti è nella
     sezione Fonti dell’app.
   </p>
   <p>
     La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
-    import PDF/XLSX o sincronizzazione automatica tra dispositivi. Il sito
-    online non implica che i tuoi dati siano salvati online: senza un backend
-    personale i due browser restano indipendenti.
+    import PDF/XLSX o sincronizzazione realtime. Il sito online non implica da
+    solo che i dati siano salvati online: occorre configurare Supabase e aprire
+    l’archivio dal Profilo su ogni dispositivo.
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
-    stati attivati servizi esterni, conti reali o abbonamenti. Il merge della PR
-    non esegue il workflow Pages: la scelta di pubblicare l’app resta manuale.
+    stati attivati progetti Supabase, conti reali o abbonamenti dall’agente.
+    GitHub Pages risulta attivo sulla cartella docs del branch corrente.
   </footer>
 </html>

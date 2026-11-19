@@ -104,7 +104,8 @@ export function isStore(input: unknown): input is Store {
           date(m.date) &&
           decimal(m.amount) &&
           currencies.includes(m.currency) &&
-          text(m.description, 2000),
+          text(m.description, 2000) &&
+          (m.performanceFlow === undefined || decimal(m.performanceFlow)),
       ) &&
       s.imports.every(
         (i) =>

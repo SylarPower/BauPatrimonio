@@ -4,15 +4,15 @@ Taccuino personale del patrimonio, in italiano: **quanto possiedo, quanto devo e
 
 ## Zero abbonamenti, nessun servizio obbligatorio
 
-La versione standard non usa Supabase ospitato, servizi bancari, API a pagamento, account, analytics o font remoti. È stato rimosso il client cloud dall'app: non basta aggiungere una variabile d'ambiente per inviare dati a un server. Dati e importazioni restano nel browser, in IndexedDB. In localStorage ci sono solo preferenze non finanziarie.
+La modalità locale non richiede servizi esterni. La modalità online opzionale usa il tuo progetto Supabase: va configurato una volta nel browser da Profilo, senza installare Node.js. Nessun analytics, font remoto o API a pagamento. Le chiavi bancarie e le chiavi Supabase privilegiate non vanno nel client. In localStorage rimangono solo preferenze e configurazione pubblica del progetto; token Auth solo in memoria.
 
-**Telefono e computer hanno archivi indipendenti.** Il trasferimento gratuito dei dati avviene tramite backup JSON e ripristino, non tramite una sincronizzazione promessa ma inesistente. Non serve una carta di credito. I costi del proprio computer/rete non sono un servizio dell'app.
+**Online:** da ciascun dispositivo accedi allo stesso progetto e utente, poi apri l’archivio online. Le modifiche successive sono salvate sul cloud con revisioni atomiche; nessuna fusione o sincronizzazione realtime. A ogni ricaricamento occorre accedere e aprire il cloud prima di modificare. In modalità locale i browser restano indipendenti. Nessun progetto remoto o abbonamento è stato attivato dall’agente.
 
 ➡ **Guida utente passo passo:** apri `public/GUIDA.html` oppure **Profilo → Guida passo passo** nell'app. È disponibile anche offline nella build di produzione.
 
 ## Uso online: nessuna installazione di Node.js
 
-**Pubblicazione preparata, non ancora attiva:** il tentativo API di attivare Pages ha restituito `403 Resource not accessible by integration`. Serve un solo intervento del proprietario: apri [Settings → Pages](https://github.com/SylarPower/BauPatrimonio/settings/pages), scegli **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs → Save**. Nessun Node.js e nessun workflow da creare. Dopo il deployment apri **https://sylarpower.github.io/BauPatrimonio/**. Il codice e i dati di esempio sono pubblici, i tuoi dati personali restano nel browser. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
+**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: restano nel browser oppure nel tuo Supabase privato se lo configuri. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
 
 ### Pubblicazione per il manutentore
 
@@ -43,6 +43,12 @@ Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa f
 ## Insight: più formati, non più rumore
 
 Due visualizzazioni principali e un approfondimento espandibile, non dieci grafici in competizione.
+
+### Investimenti e rendimento
+
+Selettore **Tutto il patrimonio / Investimenti**. Il filtro riguarda tutti i grafici, confronti e qualità senza duplicare dettagli del dossier. Investimenti aggregati, esclusi pensione e liquidità. Il patrimonio totale nella scheda principale resta distinto e non viene filtrato.
+
+Il pannello rendimento usa **Modified Dietz**, non annualizzato: risultato = finale − iniziale − flussi netti; percentuale sul capitale ponderato per giorni, flussi a fine giornata. Solo quota posseduta e flussi EUR. Richiede valutazioni esatte nelle due date, movimenti classificati e conferma esplicita dell’utente sulla completezza. Non è un rendimento certificato/fiscale o una semplice variazione del patrimonio. Acquisti/vendite nuovi includono i costi; movimenti storici/importati richiedono classificazione. I proventi distribuiti fuori dagli investimenti sono uscite negative; fra investimenti i flussi netti si compensano. Cambi di proprietà non registrati invalidano la conferma. Date/valori mancanti o archiviazioni nel periodo bloccano il calcolo; capitale ponderato non positivo non produce una percentuale. I flussi aggiunti a questo scopo non cambiano i saldi e sono correggibili.
 
 ### Andamento
 
@@ -105,11 +111,13 @@ I termini Enable Banking prevedono uso gratuito personale limitato ai propri Lin
 
 ## Architettura e riservatezza
 
-Frontend locale pubblico, nessuna operazione riservata lato browser e nessun segreto nel bundle. Non esiste una sincronizzazione silenziosa remota. La separazione locale è tra archivio demo e personale, **non** tra persone che condividono lo stesso profilo del browser.
+Frontend statico pubblico con modalità locale e collegamento opzionale a Supabase Auth/PostgREST. La separazione locale demo/personale **non** separa persone che usano lo stesso profilo browser. La copia locale rimane anche dopo la disconnessione dal cloud: usa dispositivi fidati.
 
-Sono conservati `supabase/migrations/202611190001_initial.sql` e `supabase/tests/isolation.sql` come **schema opzionale per futuri sviluppi server/self-hosted**, non necessari né collegati alla versione standard. Una riga JSONB per proprietario, revisioni, RLS e RPC atomica SECURITY INVOKER. Importi come stringhe decimali. Area privata per eventuali connettori, senza grant browser. Il campo token cifrato non è un'implementazione di un provider o della cifratura AEAD: nessun token esistente. La migrazione è stata eseguita e testata su PostgreSQL embedded con due identità. Non è stato creato un progetto Supabase remoto.
+Lo schema `supabase/migrations/202611190001_initial.sql` è collegato al client opzionale: JSONB per proprietario, revisioni, RLS e RPC atomica SECURITY INVOKER. Lo schema è stato testato su PostgreSQL/PGlite con due utenti; il client REST è coperto da test mock, **non collaudato contro un progetto Supabase reale**. Guida completa in `public/GUIDA.html#cloud`: progetto Free dedicato (non modificare BauSplit), SQL Editor, utente Auth, Project URL e chiave pubblica publishable/anon, accesso dall’app. La connessione Supabase di Arena non è attiva.
 
-Se un futuro gestore decide di sviluppare un backend, dovrà separare frontend pubblico, credenziali server, RLS e funzioni di consenso/callback/sync; **non** inserire `service_role` o token in `VITE_*`. Non devi farlo per usare questa versione gratuita.
+Il piano Free può sospendere progetti inattivi e impone limiti: consultare https://supabase.com/pricing prima dell’attivazione. Non attivare upgrade/add-on, non superare i progetti attivi disponibili. Nessuna promessa di disponibilità continua o backup gestito gratuito.
+
+Il token Auth e la password non sono persistiti. Dopo login occorre scegliere esplicitamente apertura del cloud o primo salvataggio (solo se remoto vuoto). Le scritture sono serializzate e verificano la revisione; un conflitto ferma il cloud senza sovrascrivere la copia remota. Errori/rete assente lasciano i dati locali e mostrano un avviso; niente retry invisibile o unione automatica. Rileggere il cloud sostituisce le modifiche locali. Le API sono sempre `no-store`, fuori dal service worker. Non inserire `service_role`, chiavi secret o chiavi bancarie nel browser. L’archivio Supabase non è ancora un backend bancario: nessun connettore AIS o token bancario è implementato.
 
 La PWA cache-a esclusivamente file statici di build, guida e CSV di esempio; gli archivi finanziari sono dati applicativi espliciti IndexedDB, non cache HTTP. Le cache di altre app sullo stesso dominio non vengono eliminate. Percorso/base e hash del contenuto versionano la shell offline.
 
@@ -120,7 +128,7 @@ Header consigliati per hosting sotto il tuo controllo: `X-Content-Type-Options: 
 1. Profilo → **Scarica backup strutturato**. JSON contiene dati finanziari in chiaro: conservalo in un luogo privato.
 2. Trasferiscilo tra i tuoi dispositivi tramite un mezzo sotto il tuo controllo.
 3. Sul destinatario entra nello stesso tipo di archivio → **Ripristina backup JSON** → conferma sostituzione. Nessuna fusione automatica: conserva prima un backup della copia che stai sostituendo.
-4. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
+4. Se il cloud è aperto, le modifiche (incluso svuotamento e ripristino) vengono inviate anche al cloud; controlla gli errori. Se il cloud è scollegato, viene modificata soltanto la copia locale. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
 
 ## Test eseguiti e riproducibili, senza servizi
 

@@ -1,3 +1,5 @@
+import CloudPanel from "./CloudPanel";
+import { cloudSave, cloudLogout, cloudActive } from "./cloud";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownLeft,
@@ -256,6 +258,7 @@ function App() {
       const next = s || (m === "demo" ? demo() : empty());
       await save(m, next);
       setStore(next);
+      cloudLogout();
       setMode(m);
       pref.set("bau-mode", m);
       setPage("Panoramica");
@@ -266,13 +269,12 @@ function App() {
   const update = async (s: Store) => {
     try {
       if (mode) await save(mode, s);
+      setStore(s);
+      if (mode === "personal") await cloudSave(s);
       setPersistError("");
+    } catch (e) {
       setStore(s);
-    } catch {
-      setStore(s);
-      setPersistError(
-        "Salvataggio non riuscito: esporta un backup prima di chiudere.",
-      );
+      setPersistError("Salvataggio non completato: " + (e as Error).message);
     }
   };
   const fmt = (n: number, c = "EUR") => (hidden ? "••••••" : money(n, c));
@@ -440,6 +442,13 @@ function App() {
             </nav>
           </div>
           <main className="main">
+            {mode === "personal" && (
+              <p className="muted" role="status">
+                {cloudActive()
+                  ? "Archivio online aperto · modifiche inviate al tuo Supabase"
+                  : "Archivio solo nel browser · apri il cloud dal Profilo per usare i dati online"}
+              </p>
+            )}
             {mode === "demo" && (
               <div className="demo-banner">
                 <span>
@@ -570,7 +579,12 @@ function App() {
                       <Plus size={17} />
                     </button>
                   )}
-                <Insights store={store} asOf={asOf} hidden={hidden} />
+                <Insights
+                  store={store}
+                  asOf={asOf}
+                  hidden={hidden}
+                  onChange={update}
+                />
                 <section className="card overview-assets">
                   <div className="section-heading">
                     <h2>
@@ -1219,8 +1233,8 @@ function App() {
             <div>
               <strong>Un taccuino personale</strong>
               <p>
-                Archivio {mode === "demo" ? "dimostrativo" : "personale"} su
-                questo browser. Non sincronizzato tra dispositivi.
+                Archivio {mode === "demo" ? "dimostrativo" : "personale"}. Puoi
+                aprire il tuo archivio Supabase nella sezione qui sotto.
               </p>
             </div>
           </div>
@@ -1229,9 +1243,10 @@ function App() {
             <div>
               <strong>Gratuito. Senza abbonamenti.</strong>
               <p>
-                Nessun account o servizio esterno richiesto. Per usare gli
-                stessi dati su un altro dispositivo, scarica un backup JSON e
-                ripristinalo lì. Le copie non si sincronizzano automaticamente.
+                Nessun account richiesto per la modalità locale. Per i dati
+                online configura il tuo progetto Supabase gratuito e accedi qui
+                sotto da ciascun dispositivo. Nessun piano a pagamento viene
+                attivato dall’app.
               </p>
               <a
                 href={import.meta.env.BASE_URL + "GUIDA.html"}
@@ -1242,6 +1257,14 @@ function App() {
               </a>
             </div>
           </div>
+          <CloudPanel
+            store={store}
+            personal={mode === "personal"}
+            onLoad={(s) => {
+              setStore(s);
+              setPersistError("");
+            }}
+          />
           <h3>Aspetto</h3>
           <div className="theme-options">
             <button
@@ -1365,6 +1388,7 @@ function App() {
               onClick={() => {
                 close();
                 pref.remove("bau-mode");
+                cloudLogout();
                 setMode(null);
               }}
             >
@@ -1389,7 +1413,9 @@ function App() {
           onDelete={() => {
             update(empty());
             close();
-            setToast("Dati dell’archivio eliminati.");
+            setToast(
+              "Archivio svuotato nel browser. Controlla eventuali errori di salvataggio online.",
+            );
           }}
         />
       )}

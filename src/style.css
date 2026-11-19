@@ -3045,3 +3045,33 @@ th:nth-child(2) {
     width: 44px;
   }
 }
+/* Le opzioni avanzate restano chiuse: un modulo leggibile anche a 320px. */
+.insights details form,
+.cloud-panel form {
+  display: grid;
+  gap: 12px;
+  margin-block: 18px;
+}
+.insights details form label,
+.cloud-panel label:not(.setting-row) {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.insights details input,
+.insights details select,
+.cloud-panel input {
+  max-width: 100%;
+  min-width: 0;
+}
+.insights details summary,
+.cloud-panel summary {
+  cursor: pointer;
+  padding-block: 12px;
+}
+.cloud-panel button {
+  margin: 6px 6px 6px 0;
+}
+.insights > .insight-tabs {
+  margin-bottom: 18px;
+}

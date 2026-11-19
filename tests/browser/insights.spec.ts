@@ -134,6 +134,7 @@ test("importa strumenti con quantità e prezzo e preserva il totale del dossier"
   await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page
+    .getByRole("dialog")
     .getByRole("button", { name: "Investimenti", exact: false })
     .click();
   await page.getByLabel("Nome della voce").fill("Dossier importato");

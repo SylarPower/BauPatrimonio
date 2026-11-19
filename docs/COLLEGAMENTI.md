@@ -46,7 +46,7 @@ Per proseguire occorre accettare **un backend privato aggiuntivo** (eventualment
 
 ## Passi successivi, non ancora eseguiti
 
-1. Decisione dell'utente sull'uso di un backend privato gratuito esterno a GitHub Pages.
+1. L’utente ha autorizzato un backend esterno purché gratuito. Il client archivio Supabase è ora implementato, ma non è stato configurato un progetto remoto: seguire la guida `public/GUIDA.html#cloud`. Questo non implementa ancora un backend bancario AIS.
 2. Registrazione personale presso il provider e verifica degli istituti/conti effettivamente disponibili, prima in sandbox dove accessibile.
 3. Adattatore server AIS-only: consenso con state anti-CSRF, callback autenticata, sessioni cifrate, revoca/scadenza, retry e sincronizzazione idempotente.
 4. Test reali in sandbox: successo, rifiuto, scadenza, revoca, parzialità ed errori che preservano l'ultimo saldo valido. Nessun collegamento di conti reali senza conferma separata.
