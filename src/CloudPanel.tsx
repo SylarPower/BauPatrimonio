@@ -56,6 +56,14 @@ export default function CloudPanel({
         l’archivio con le regole SQL previste. Non collega automaticamente le
         banche. Nessun promemoria di backup.
       </p>
+      <a
+        className="inline-link"
+        href={import.meta.env.BASE_URL + "GUIDA.html#cloud"}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Guida Supabase passo passo ↗
+      </a>
       <p role="status">
         {cloudActive()
           ? "Archivio online aperto: le prossime modifiche vengono inviate al tuo progetto."

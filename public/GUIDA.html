@@ -218,15 +218,18 @@
   <h2 id="cloud">Archivio online con Supabase, senza Node.js</h2>
   <p>
     Il collegamento cloud è implementato ma non attivato su un progetto reale.
-    L’attivazione si svolge interamente dal browser. Non usare il database di
-    BauSplit: crea un progetto dedicato per evitare modifiche ad altre app.
+    L’attivazione si svolge interamente dal browser. Se hai già creato un
+    progetto dedicato a BauPatrimonio, apri quello: non crearne un altro. Non
+    usare il database di BauSplit, per evitare modifiche ad altre app.
   </p>
   <ol>
     <li>
-      Accedi alla dashboard Supabase e crea un progetto in un’organizzazione sul
-      piano <strong>Free ($0)</strong>, preferibilmente in una regione UE. Non
-      selezionare Pro, add-on, PITR o upgrade. Conserva la password database
-      privatamente: non serve inserirla nell’app.
+      Accedi alla
+      <a href="https://supabase.com/dashboard">dashboard Supabase</a> e apri il
+      progetto BauPatrimonio dedicato. Solo se non esiste, crealo in
+      un’organizzazione sul piano <strong>Free ($0)</strong>, preferibilmente in
+      una regione UE. Non selezionare Pro, add-on, PITR o upgrade. Conserva la
+      password database privatamente: non serve inserirla nell’app.
     </li>
     <li>
       Il piano Free indica massimo due progetti attivi: se hai già raggiunto il
@@ -236,14 +239,15 @@
       consultati il 19 novembre 2026.
     </li>
     <li>
-      Nel progetto NUOVO apri <strong>SQL Editor → New query</strong>. Apri su
-      GitHub il
+      Nel progetto dedicato non ancora configurato apri
+      <strong>SQL Editor → New query</strong>. Apri su GitHub il
       <a
         href="https://github.com/SylarPower/BauPatrimonio/blob/arena/dcc936f9-baupatrimonio/supabase/migrations/202611190001_initial.sql"
         >file SQL di BauPatrimonio</a
       >, copia tutto il contenuto e premi Run nell’editor Supabase. Eseguilo una
       sola volta. Deve riuscire senza errori; non disattivare Row Level
-      Security.
+      Security. In Table Editor deve comparire <code>public.vaults</code> con
+      RLS abilitata. Non usare «Disable RLS» e non aggiungere policy pubbliche.
     </li>
     <li>
       In
@@ -251,12 +255,22 @@
       il tuo utente con email e password personale; usa la conferma prevista
       dalla dashboard. Non inviare queste credenziali in chat. Puoi disabilitare
       le nuove registrazioni pubbliche nelle impostazioni Auth: è un’app
-      personale.
+      personale. Questo utente appartiene alla tua app: non è automaticamente
+      l’account con cui entri nella dashboard Supabase e non è l’account
+      Fideuram. Se crei l’utente dalla dashboard, verifica che risulti
+      confermato; puoi usare «Auto Confirm User» per il tuo utente creato
+      dall’amministratore. Non abilitare conferma automatica per registrazioni
+      pubbliche.
     </li>
     <li>
       Da <strong>Connect / Project Settings → API Keys</strong> copia il Project
       URL e soltanto la chiave <strong>publishable</strong> oppure la vecchia
-      <strong>anon</strong>. Non usare mai secret o service_role.
+      <strong>anon</strong>. Il Project URL ha forma
+      <code>https://riferimento.supabase.co</code>, non l’indirizzo della
+      dashboard né l’host <code>db.…</code>. Nei pannelli recenti l’URL è anche
+      in Project Settings → Data API. Non usare mai secret o service_role. La
+      chiave pubblica identifica il progetto, non sostituisce il login: sono RLS
+      e utente autenticato a proteggere i dati.
     </li>
     <li>
       Apri il tuo patrimonio nell’app → Profilo → Il tuo archivio online.
@@ -284,6 +298,62 @@
     sostituisce. Il progetto cloud non è un backup garantito; il piano Free può
     essere sospeso e non offre la stessa conservazione dei piani a pagamento.
     Nessun promemoria di backup è attivato.
+  </p>
+  <h3>Come verificare che funzioni</h3>
+  <ol>
+    <li>
+      Dopo il primo salvataggio, controlla lo stato «Archivio online aperto» e
+      l’assenza di errori. In Table Editor → vaults deve esserci la riga del tuo
+      utente; non condividere schermate del documento, contiene dati finanziari.
+    </li>
+    <li>
+      Per una prova senza rischiare dati reali, configura il cloud prima di
+      inserire il patrimonio: crea una voce di prova dal valore riconoscibile,
+      ad esempio 1 EUR.
+    </li>
+    <li>
+      Su un secondo browser o telefono configura lo stesso URL e chiave
+      pubblica, accedi con lo stesso utente Auth e scegli «Apri / rileggi
+      archivio online». Devi vedere la voce di prova. Non scegliere «Crea il
+      primo salvataggio» sul secondo dispositivo.
+    </li>
+    <li>
+      Modifica o rimuovi la voce di prova da un solo dispositivo; sull’altro
+      rileggi il cloud. Da quel momento puoi iniziare a inserire i dati reali.
+    </li>
+  </ol>
+  <h3>Se qualcosa non funziona</h3>
+  <ul>
+    <li>
+      <strong>Accesso non riuscito:</strong> verifica utente in Authentication →
+      Users, conferma email, password Auth e corrispondenza fra URL e chiave
+      dello stesso progetto. Il login all’app non usa la password del database.
+    </li>
+    <li>
+      <strong>Accesso riuscito ma apertura/salvataggio falliti:</strong>
+      verifica che lo script SQL sia terminato senza errori, che esista vaults
+      con RLS e che il progetto non sia sospeso. Non risolvere disattivando RLS.
+    </li>
+    <li>
+      <strong>«Relation already exists» eseguendo SQL:</strong> lo schema
+      potrebbe essere già presente. Non cancellare tabelle né rieseguire a
+      tentativi: fermati e richiedi una verifica della configurazione esistente.
+    </li>
+    <li>
+      <strong>Cloud vuoto sul secondo dispositivo:</strong> verifica stesso
+      progetto e stesso utente Auth; utenti diversi hanno archivi separati per
+      sicurezza.
+    </li>
+    <li>
+      <strong>Sessione scaduta o conflitto:</strong> prima conserva o riconcilia
+      le modifiche locali rimaste in sospeso, poi accedi e rileggi il cloud. La
+      rilettura sostituisce il contenuto locale: non fonde le copie.
+    </li>
+  </ul>
+  <p>
+    Questa procedura attiva soltanto l’archivio dei tuoi dati. Non occorrono
+    Edge Functions, chiavi bancarie, collegamenti GitHub–Supabase o servizi a
+    pagamento per il salvataggio. Non attiva la sincronizzazione con Fideuram.
   </p>
   <h2>Grafici del solo portafoglio e rendimento</h2>
   <p>

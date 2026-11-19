@@ -3075,3 +3075,130 @@ th:nth-child(2) {
 .insights > .insight-tabs {
   margin-bottom: 18px;
 }
+/* Rendimento: stesso ritmo delle altre card, senza controlli a filo bordo. */
+.performance-card {
+  --panel-space: 22px;
+  padding: var(--panel-space);
+  margin-block: 20px;
+}
+.performance-card > .section-heading {
+  padding: 0;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.performance-card > p,
+.performance-card details p,
+.cloud-panel p {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.performance-card > p {
+  margin-block: 12px;
+}
+.chart-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+  margin-block: 20px;
+}
+.chart-controls > label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+.chart-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+}
+.performance-card > .setting-row {
+  align-items: flex-start;
+  padding-block: 18px;
+}
+.performance-card > .setting-row input {
+  margin-top: 3px;
+}
+.performance-card > .quality-grid {
+  padding: 0;
+  margin-block: 18px;
+}
+.performance-card > details {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 4px;
+}
+.performance-card details form {
+  padding-block: 18px;
+  border-top: 1px solid var(--border);
+  margin: 18px 0 0;
+  gap: 16px;
+}
+.performance-card details form label,
+.cloud-panel form label:not(.setting-row) {
+  margin: 0;
+  gap: 8px;
+}
+.performance-card details form input,
+.performance-card details form select,
+.cloud-panel form input {
+  margin-top: 0;
+  min-height: 44px;
+}
+.performance-card details form p,
+.performance-card details form h3 {
+  margin: 0;
+}
+.performance-card details li {
+  padding-block: 8px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.performance-card details li button {
+  display: block;
+  min-height: 44px;
+  margin-top: 4px;
+}
+.cloud-panel {
+  padding: 20px;
+}
+.cloud-panel form {
+  gap: 18px;
+}
+.cloud-panel form details {
+  display: grid;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
+}
+.cloud-panel form details > label + label {
+  margin-top: 16px;
+}
+.cloud-panel button {
+  min-height: 44px;
+  white-space: normal;
+}
+@media (max-width: 480px) {
+  .performance-card {
+    --panel-space: 16px;
+  }
+  .chart-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .cloud-panel {
+    padding: 16px;
+  }
+  .cloud-panel > button {
+    display: flex;
+    width: 100%;
+    margin: 10px 0 0;
+    justify-content: center;
+  }
+  .performance-card details form button {
+    width: 100%;
+  }
+}

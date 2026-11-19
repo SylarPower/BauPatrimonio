@@ -28,7 +28,7 @@ export default function Performance({
       m.performanceFlow === undefined,
   );
   return (
-    <section className="card">
+    <section className="card performance-card">
       <div className="section-heading">
         <h2>Rendimento degli investimenti</h2>
         <span className="subtle-tag">Non annualizzato</span>
