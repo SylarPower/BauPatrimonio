@@ -1,59 +1,34 @@
-# BauPatrimonio — versione gratuita locale
+# BauPatrimonio — app web gratuita
 
 Taccuino personale del patrimonio, in italiano: **quanto possiedo, quanto devo e cosa è cambiato**. React 19, TypeScript, Vite, PWA, font locali e Decimal.js. Non dispone pagamenti e non invia ordini di investimento.
 
 ## Zero abbonamenti, nessun servizio obbligatorio
 
-La versione standard non usa Supabase ospitato, servizi bancari, API a pagamento, account, analytics o font remoti. È stato rimosso il client cloud dall'app: non basta aggiungere una variabile d'ambiente per inviare dati a un server. Dati e importazioni restano nel browser, in IndexedDB. In localStorage ci sono solo preferenze non finanziarie.
+Il patrimonio personale è **online-first**: accesso email/password, lettura automatica da Supabase e salvataggio automatico con revisioni atomiche. URL e chiave pubblica publishable sono configurati in `src/cloud-config.ts`; l’utente non deve copiarli, scegliere un archivio o attivare il cloud. Nessun analytics, font remoto, servizio a pagamento o chiave privilegiata nel client.
 
-**Telefono e computer hanno archivi indipendenti.** Il trasferimento gratuito dei dati avviene tramite backup JSON e ripristino, non tramite una sincronizzazione promessa ma inesistente. Non serve una carta di credito. I costi del proprio computer/rete non sono un servizio dell'app.
+La demo resta separata in IndexedDB e funziona offline. Il patrimonio personale corrente e la sessione Auth restano soltanto in memoria durante l’uso, mentre il documento persistente è nel database Supabase privato. Nessun nuovo archivio personale viene scritto in IndexedDB. A ogni ricaricamento occorre accedere: i token non sono persistiti. Gli archivi locali delle vecchie versioni non vengono cancellati né caricati automaticamente su un account.
+
+**Computer e telefono:** accedi con lo stesso account e l’app carica il medesimo documento remoto. Non è sincronizzazione realtime: «Aggiorna dati online» rilegge i cambiamenti dell’altro dispositivo. Un conflitto blocca le scritture; un errore non viene mostrato come successo. Niente upgrade o acquisti effettuati.
 
 ➡ **Guida utente passo passo:** apri `public/GUIDA.html` oppure **Profilo → Guida passo passo** nell'app. È disponibile anche offline nella build di produzione.
 
-## Avvio manuale dal computer
+## Uso online: nessuna installazione di Node.js
 
-1. Installa Node.js **22.12+** e npm.
-2. Scarica il progetto e apri un terminale nella cartella.
-3. Esegui:
+**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: sono nel tuo archivio Supabase privato, non pubblicati su GitHub. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. La demo e la guida funzionano anche offline dopo il primo caricamento; il patrimonio personale richiede accesso online.
+
+### Pubblicazione per il manutentore
+
+La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages da selezionare è **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs** per questa pubblicazione; dopo un eventuale merge si può scegliere `main /docs`. Questo non pubblica il database locale o backup.
+
+I comandi Node sono esclusivamente per chi sviluppa/manutiene, non per chi usa l’app:
 
 ```sh
 npm ci
-npm run dev
+npm run dev             # sviluppo
+npm run prepare:pages   # genera docs/ con base /BauPatrimonio/
 ```
 
-4. Apri l'URL mostrato da Vite. Nessun `.env` richiesto.
-5. Per provare la versione installabile/offline:
-
-```sh
-npm run build
-npm run preview
-```
-
-Mantieni il terminale aperto durante l'uso locale. I server ascoltano su `0.0.0.0` per la preview/rete locale e accettano l'host della preview. Dal telefono `localhost` indica il telefono, non il PC. L'installazione PWA richiede HTTPS oppure localhost sul dispositivo stesso.
-
-## Telefono: pubblicazione facoltativa senza backend
-
-Puoi usare GitHub Pages del **repository pubblico** per ospitare solo i file statici dell'app, non i dati del tuo patrimonio. Nessun dominio a pagamento necessario. La pubblicazione è **manuale**, non viene eseguita da push o merge. Non è stata attivata durante lo sviluppo.
-
-1. Dopo il merge, apri `docs/pages-workflow.yml.example` su GitHub e copia il contenuto. Dal repository scegli **Add file → Create new file**, nome `.github/workflows/pages.yml`, incolla e salva. Serve un utente con permessi di modifica dei workflow: la connessione dell'agente non li possiede, perciò il modello è consegnato come documento non eseguibile, senza aggirare il vincolo.
-2. GitHub → **Settings → Pages → Source: GitHub Actions**. Serve il ruolo amministratore/proprietario.
-3. **Actions → Pubblica app gratuita su Pages → Run workflow → main**.
-4. Attendi il deployment e apri l'URL indicato, anche dal telefono.
-5. Chrome → Installa app; Safari → Condividi → Aggiungi alla schermata Home.
-6. Prima apertura online completata, poi utilizzo offline.
-
-Il modello `docs/pages-workflow.yml.example`, una volta installato come workflow `pages.yml`, è limitato ai repository **pubblici**, con runner standard, e non si esegue automaticamente. Non attivare piani a pagamento, carta, runner speciali o upgrade; se GitHub richiede un acquisto, fermati e usa l'app localmente. Il repository verificato durante lo sviluppo è pubblico. Eventuali cambiamenti futuri delle condizioni del fornitore vanno verificati prima dell'attivazione.
-
-Il workflow calcola il percorso Pages (`/BauPatrimonio/` per questo repository). È stato verificato anche il funzionamento sotto un sottopercorso. Per altri hosting statici pubblica solo `dist/` su HTTPS:
-
-```sh
-# Hosting alla radice:
-npm run build
-# Hosting sotto /nome-progetto/:
-BAU_BASE_PATH=/nome-progetto/ npm run build
-```
-
-Non caricare backup, estratti conto o `.env` nel repository/hosting. L'URL dell'app non è un link pubblico ai dati: il sito scarica codice e demo, i patrimoni personali restano su ciascun browser. Non sono cifrati: chi usa lo stesso profilo browser può leggerli.
+Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa facoltativa non installata: la connessione non ha permessi di modifica dei workflow. Non attivare piani a pagamento, runner speciali o upgrade. Lo stato effettivo della pubblicazione va verificato nella pagina Settings → Pages, non dedotto dalla presenza dei file.
 
 ## Funziona subito
 
@@ -70,6 +45,12 @@ Non caricare backup, estratti conto o `.env` nel repository/hosting. L'URL dell'
 ## Insight: più formati, non più rumore
 
 Due visualizzazioni principali e un approfondimento espandibile, non dieci grafici in competizione.
+
+### Investimenti e rendimento
+
+Selettore **Tutto il patrimonio / Investimenti**. Il filtro riguarda tutti i grafici, confronti e qualità senza duplicare dettagli del dossier. Investimenti aggregati, esclusi pensione e liquidità. Il patrimonio totale nella scheda principale resta distinto e non viene filtrato.
+
+Il pannello rendimento usa **Modified Dietz**, non annualizzato: risultato = finale − iniziale − flussi netti; percentuale sul capitale ponderato per giorni, flussi a fine giornata. Solo quota posseduta e flussi EUR. Richiede valutazioni esatte nelle due date, movimenti classificati e conferma esplicita dell’utente sulla completezza. Non è un rendimento certificato/fiscale o una semplice variazione del patrimonio. Acquisti/vendite nuovi includono i costi; movimenti storici/importati richiedono classificazione. I proventi distribuiti fuori dagli investimenti sono uscite negative; fra investimenti i flussi netti si compensano. Cambi di proprietà non registrati invalidano la conferma. Date/valori mancanti o archiviazioni nel periodo bloccano il calcolo; capitale ponderato non positivo non produce una percentuale. I flussi aggiunti a questo scopo non cambiano i saldi e sono correggibili.
 
 ### Andamento
 
@@ -126,17 +107,19 @@ Esempi in `public/examples/`, scaricabili da Fonti e dalla guida. **Sono traccia
 
 ## Banche e sandbox: stato effettivo
 
-**Non è attivo né testato in sandbox alcun connettore bancario.** Fideuram e Trade Republic Italia, separatamente per liquidità, movimenti, dossier e storico: **Da verificare**. La richiesta di gratuità non autorizza a simulare collegamenti o usare API private.
+**Nessun connettore bancario è attivo o testato in sandbox.** Verifica documentale aggiornata al 19 novembre 2026: Fideuram dispone di un percorso AIS tramite CBI Globe ed è citata nella documentazione Enable Banking per l’Italia. Trade Republic documenta conti, saldi e movimenti e il provider include clienti italiani; i movimenti risultano limitati a importo, valuta e data, senza descrizioni. **Le posizioni titoli/ETF e la previdenza non risultano coperte dalle API AIS consultate.**
 
-Non sono stati acquistati contratti o attivati servizi. Non si chiedono password, PIN, OTP o segreti in chat. Manuale e CSV sono disponibili subito. Documentazione corrente, copertura per prodotto, autorizzazioni e disponibilità effettiva gratuita devono essere verificate prima di un eventuale adattatore. Vedi `docs/COLLEGAMENTI.md`.
+I termini Enable Banking prevedono uso gratuito personale limitato ai propri Linked Accounts, modalità restricted. Richiede registrazione personale, app, consensi e un backend riservato per la chiave privata: GitHub Pages da solo non può sincronizzare le banche. Non sono stati attivati conti o servizi, accettati contratti o acquistati abbonamenti. Fonti, limiti, condizioni e passi mancanti in [`docs/COLLEGAMENTI.md`](docs/COLLEGAMENTI.md), anche nell’interfaccia Fonti.
 
 ## Architettura e riservatezza
 
-Frontend locale pubblico, nessuna operazione riservata lato browser e nessun segreto nel bundle. Non esiste una sincronizzazione silenziosa remota. La separazione locale è tra archivio demo e personale, **non** tra persone che condividono lo stesso profilo del browser.
+Frontend statico pubblico + Supabase Auth/PostgREST nel progetto dedicato già esistente. Lo schema `supabase/migrations/202611190001_initial.sql` è stato preparato dal proprietario e verificato dall’agente il 19 novembre 2026: RLS abilitata e forzata, quattro policy, nessun privilegio anon di lettura o esecuzione save, RPC SECURITY INVOKER e confronto atomico di revisione. Non è stato rieseguito SQL su tabelle esistenti. URL Auth/redirect impostati al sito Pages; signup pubblico disabilitato con utente confermato esistente. Nessuna modifica all’altro progetto dell’utente.
 
-Sono conservati `supabase/migrations/202611190001_initial.sql` e `supabase/tests/isolation.sql` come **schema opzionale per futuri sviluppi server/self-hosted**, non necessari né collegati alla versione standard. Una riga JSONB per proprietario, revisioni, RLS e RPC atomica SECURITY INVOKER. Importi come stringhe decimali. Area privata per eventuali connettori, senza grant browser. Il campo token cifrato non è un'implementazione di un provider o della cifratura AEAD: nessun token esistente. La migrazione è stata eseguita e testata su PostgreSQL embedded con due identità. Non è stato creato un progetto Supabase remoto.
+Un primo login senza documento inizializza un archivio vuoto: mai caricamento implicito di demo o vecchi dati locali. Credenziali inserite solo nell’app e inviate a Supabase Auth. Non sono state recuperate password degli utenti né eseguiti accessi reali al loro posto. La chiave **publishable** è volutamente pubblica: non è un segreto bancario o service_role. Il controllo è RLS, non l’occultamento della chiave. Non è cifratura end-to-end: l’amministratore Supabase può amministrare i dati.
 
-Se un futuro gestore decide di sviluppare un backend, dovrà separare frontend pubblico, credenziali server, RLS e funzioni di consenso/callback/sync; **non** inserire `service_role` o token in `VITE_*`. Non devi farlo per usare questa versione gratuita.
+Le scritture sono serializzate e verificate per revisione. Le modifiche personali sono bloccate durante salvataggio o errore. Stato «Salvato online» solo dopo risposta positiva. In caso di errore si conservano modifiche non salvate in memoria, esportabili senza promemoria di backup. Il retry mantiene la revisione attesa; una richiesta già registrata ma senza risposta può generare conflitto al retry: nessuna sovrascrittura, rilettura con conferma dopo riconciliazione. Uscita e reload possono perdere il contenuto non salvato: avviso prima di abbandonare; uscita applicativa e rilettura chiedono conferma. Password/access token/refresh token non vengono scritti nel browser. Il refresh in-sessione usa solo token in memoria; alla scadenza non rinnovabile si richiede nuovo accesso. Le API usano `no-store`, non sono intercettate dal service worker.
+
+Il client è testato con API simulate e il DB con PostgreSQL/PGlite a due identità. Sul progetto reale sono stati verificati metadati di sicurezza e Auth, **non** eseguiti login/salvataggi con credenziali reali dell’utente. Guida senza passaggi tecnici in `public/GUIDA.html#cloud`. Supabase Free ha limiti e può sospendere i progetti inattivi: https://supabase.com/pricing. Nessun upgrade o add-on automatico nell’app. Il backend bancario Fideuram è ancora da implementare: l’archivio online non è un connettore AIS.
 
 La PWA cache-a esclusivamente file statici di build, guida e CSV di esempio; gli archivi finanziari sono dati applicativi espliciti IndexedDB, non cache HTTP. Le cache di altre app sullo stesso dominio non vengono eliminate. Percorso/base e hash del contenuto versionano la shell offline.
 
@@ -147,7 +130,7 @@ Header consigliati per hosting sotto il tuo controllo: `X-Content-Type-Options: 
 1. Profilo → **Scarica backup strutturato**. JSON contiene dati finanziari in chiaro: conservalo in un luogo privato.
 2. Trasferiscilo tra i tuoi dispositivi tramite un mezzo sotto il tuo controllo.
 3. Sul destinatario entra nello stesso tipo di archivio → **Ripristina backup JSON** → conferma sostituzione. Nessuna fusione automatica: conserva prima un backup della copia che stai sostituendo.
-4. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
+4. Nel patrimonio personale svuotamento e ripristino modificano il documento ONLINE: controlla il salvataggio riuscito. Nella demo rimangono locali. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio e non elimina l’account Auth. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
 
 ## Test eseguiti e riproducibili, senza servizi
 
@@ -182,5 +165,5 @@ src/Portfolio.tsx          strumenti manuali e riconciliazione dossier
 src/validation.ts          validazione backup
 public/GUIDA.html          istruzioni utente offline
 scripts/build-sw.mjs      precache statica con percorso e hash di contenuto
-supabase/                 schema server opzionale, non collegato al frontend
+supabase/                 schema archivio online, RLS e test isolamento
 ```

@@ -3045,3 +3045,229 @@ th:nth-child(2) {
     width: 44px;
   }
 }
+/* Le opzioni avanzate restano chiuse: un modulo leggibile anche a 320px. */
+.insights details form,
+.cloud-panel form {
+  display: grid;
+  gap: 12px;
+  margin-block: 18px;
+}
+.insights details form label,
+.cloud-panel label:not(.setting-row) {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.insights details input,
+.insights details select,
+.cloud-panel input {
+  max-width: 100%;
+  min-width: 0;
+}
+.insights details summary,
+.cloud-panel summary {
+  cursor: pointer;
+  padding-block: 12px;
+}
+.cloud-panel button {
+  margin: 6px 6px 6px 0;
+}
+.insights > .insight-tabs {
+  margin-bottom: 18px;
+}
+/* Rendimento: stesso ritmo delle altre card, senza controlli a filo bordo. */
+.performance-card {
+  --panel-space: 22px;
+  padding: var(--panel-space);
+  margin-block: 20px;
+}
+.performance-card > .section-heading {
+  padding: 0;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.performance-card > p,
+.performance-card details p,
+.cloud-panel p {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.performance-card > p {
+  margin-block: 12px;
+}
+.chart-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+  margin-block: 20px;
+}
+.chart-controls > label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+.chart-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+}
+.performance-card > .setting-row {
+  align-items: flex-start;
+  padding-block: 18px;
+}
+.performance-card > .setting-row input {
+  margin-top: 3px;
+}
+.performance-card > .quality-grid {
+  padding: 0;
+  margin-block: 18px;
+}
+.performance-card > details {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 4px;
+}
+.performance-card details form {
+  padding-block: 18px;
+  border-top: 1px solid var(--border);
+  margin: 18px 0 0;
+  gap: 16px;
+}
+.performance-card details form label,
+.cloud-panel form label:not(.setting-row) {
+  margin: 0;
+  gap: 8px;
+}
+.performance-card details form input,
+.performance-card details form select,
+.cloud-panel form input {
+  margin-top: 0;
+  min-height: 44px;
+}
+.performance-card details form p,
+.performance-card details form h3 {
+  margin: 0;
+}
+.performance-card details li {
+  padding-block: 8px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.performance-card details li button {
+  display: block;
+  min-height: 44px;
+  margin-top: 4px;
+}
+.cloud-panel {
+  padding: 20px;
+}
+.cloud-panel form {
+  gap: 18px;
+}
+.cloud-panel form details {
+  display: grid;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
+}
+.cloud-panel form details > label + label {
+  margin-top: 16px;
+}
+.cloud-panel button {
+  min-height: 44px;
+  white-space: normal;
+}
+@media (max-width: 480px) {
+  .performance-card {
+    --panel-space: 16px;
+  }
+  .chart-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .cloud-panel {
+    padding: 16px;
+  }
+  .cloud-panel > button {
+    display: flex;
+    width: 100%;
+    margin: 10px 0 0;
+    justify-content: center;
+  }
+  .performance-card details form button {
+    width: 100%;
+  }
+}
+/* Accesso online: un solo percorso, senza configurazione tecnica per l’utente. */
+.online-workspace {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.online-workspace:disabled {
+  opacity: 0.65;
+}
+.auth-card {
+  max-width: 420px;
+  width: 100%;
+  margin: 28px auto 0;
+  padding: 24px;
+  text-align: left;
+}
+.welcome .auth-card h2 {
+  font-size: 21px;
+  line-height: 1.35;
+}
+.welcome .auth-card p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.auth-card form {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.auth-card label {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.auth-card input {
+  margin: 0;
+  min-height: 44px;
+}
+.auth-card button {
+  min-height: 44px;
+}
+.welcome .auth-card .auth-help {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.auth-card > .text-button {
+  margin-top: 6px;
+}
+.sync-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.sync-status button {
+  min-height: 44px;
+}
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 20px 16px;
+  }
+}

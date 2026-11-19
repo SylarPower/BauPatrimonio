@@ -1,3 +1,4 @@
+import Performance from "./Performance";
 import { useMemo, useRef, useState, type RefObject } from "react";
 import { Download, Info, ChevronDown, ChartNoAxesCombined } from "lucide-react";
 import Papa from "papaparse";
@@ -91,20 +92,61 @@ function Tabs<T extends string>({
   );
 }
 export default function Insights({
-  store,
+  store: fullStore,
   asOf,
   hidden,
+  onChange,
 }: {
   store: Store;
   asOf: string;
   hidden: boolean;
+  onChange?: (s: Store) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [scope, setScope] = useState<"all" | "investment">("all");
+  const store = useMemo(
+    () =>
+      scope === "all"
+        ? fullStore
+        : {
+            ...fullStore,
+            assets: fullStore.assets.filter((a) => a.category === "investment"),
+          },
+    [fullStore, scope],
+  );
   const dates = eventDates(store, asOf),
     quality = freshness(store, asOf),
     t = totals(store.assets, asOf);
   return (
     <div className="insights">
+      <Tabs
+        label="Ambito dei grafici"
+        value={scope}
+        onChange={setScope}
+        options={[
+          { value: "all", label: "Tutto il patrimonio" },
+          { value: "investment", label: "Investimenti" },
+        ]}
+      />
+      {scope === "investment" && (
+        <>
+          <p>
+            Tutti gli investimenti insieme. Esclusi conti correnti, fondo
+            pensione, immobili e debiti. I dettagli titoli non vengono sommati
+            una seconda volta al dossier.
+          </p>
+          <Performance
+            key={scope}
+            store={store}
+            hidden={hidden}
+            onChange={
+              onChange
+                ? (s) => onChange({ ...fullStore, movements: s.movements })
+                : undefined
+            }
+          />
+        </>
+      )}
       <div className="dashboard-grid insights-grid">
         <Trend store={store} asOf={asOf} hidden={hidden} />
         <Composition store={store} asOf={asOf} hidden={hidden} />

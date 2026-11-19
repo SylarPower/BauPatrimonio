@@ -79,6 +79,14 @@ export function recordOperation(
         amount: (id === cashId ? cashDelta : targetDelta).toString(),
         currency: "EUR",
         description,
+        ...(id === targetId && kind !== "repay"
+          ? {
+              performanceFlow: (kind === "buy"
+                ? n.add(fee)
+                : n.sub(fee).neg()
+              ).toString(),
+            }
+          : {}),
       })),
     ],
   };

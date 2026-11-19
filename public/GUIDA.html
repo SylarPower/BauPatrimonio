@@ -68,67 +68,52 @@
   ><a href="./">← Torna all’app</a>
   <h1>Il tuo patrimonio, senza abbonamenti.</h1>
   <p>
-    Guida pratica della versione gratuita locale. Nessun account, carta di
-    credito, database ospitato o API bancaria è necessario. Tutti i calcoli e le
-    importazioni avvengono nel browser.
+    Guida pratica dell’app gratuita accessibile dal web. Il patrimonio personale
+    viene salvato online su Supabase, protetto dal tuo account. La demo è
+    separata e non viene caricata nel tuo archivio.
   </p>
   <aside>
-    <strong>Da sapere prima di iniziare</strong><br />I dati stanno nel browser,
-    non nel sito. Telefono e computer hanno copie indipendenti. Cancellare i
-    dati del browser può cancellare il patrimonio: scarica regolarmente il
-    backup JSON. «Nascondi importi» non cifra i dati.
+    <strong>Da sapere prima di iniziare</strong><br />Apri l’app, accedi e
+    ritrovi i tuoi dati. Non devi configurare URL o chiavi. Controlla lo stato
+    «Salvato online» prima di chiudere. In caso di errore le modifiche non
+    salvate restano soltanto nella pagina aperta: non chiuderla. «Nascondi
+    importi» è una protezione visiva, non una cifratura.
   </aside>
-  <h2>1. Avvia dal computer</h2>
+  <h2>1. Apri l’app, senza installare programmi</h2>
   <ol>
-    <li>Installa Node.js 22.12 o successivo e scarica il progetto.</li>
-    <li>Apri un terminale nella cartella ed esegui <code>npm ci</code>.</li>
     <li>
-      Esegui <code>npm run dev</code> e apri l’indirizzo mostrato da Vite. Per
-      una versione offline installabile usa invece <code>npm run build</code>,
-      poi <code>npm run preview</code>. Mantieni il terminale aperto durante
-      l’uso locale.
+      Apri <a href="./">BauPatrimonio nel browser</a>, sul computer o sul
+      telefono. Non devi scaricare il repository, installare Node.js o usare il
+      terminale.
     </li>
     <li>
-      Non compilare chiavi o credenziali: il file <code>.env</code> non serve.
+      Scegli «Inizia il mio patrimonio» e accedi con email e password
+      dell’utente BauPatrimonio già creato. Il tuo archivio viene caricato
+      automaticamente. «Prova con dati di esempio» non richiede accesso.
+    </li>
+    <li>
+      Salva il sito nei preferiti. GitHub Pages distribuisce l’app; i tuoi
+      importi non vengono salvati nel repository. Per l’archivio online segui la
+      sezione Supabase più sotto.
     </li>
   </ol>
-  <h2>2. Telefono e installazione, senza server a pagamento</h2>
+  <h2>2. Installazione facoltativa sul telefono</h2>
+  <ol>
+    <li>Apri il sito con Chrome o Safari.</li>
+    <li>
+      Chrome: menu → «Installa app». Safari: Condividi → «Aggiungi alla
+      schermata Home».
+    </li>
+    <li>
+      Attendi la prima apertura online completa, poi puoi utilizzare l’app anche
+      offline.
+    </li>
+  </ol>
   <p>
-    Per un URL HTTPS comodo da aprire dal telefono puoi pubblicare
-    <em>solo l’app statica</em> su GitHub Pages del repository pubblico. Nessun
-    patrimonio personale viene pubblicato: viene salvato sul singolo
-    dispositivo.
+    Non devi creare workflow o account sviluppatore per usare il sito. La
+    pubblicazione dei file statici è gestita dal manutentore tramite la cartella
+    <code>docs/</code>.
   </p>
-  <ol>
-    <li>
-      Dopo il merge, apri <code>docs/pages-workflow.yml.example</code> su GitHub
-      e copia il testo. Scegli <strong>Add file → Create new file</strong>, nome
-      <code>.github/workflows/pages.yml</code>, incolla e salva. Questa
-      operazione va fatta da te: la connessione dell’agente non ha permessi di
-      modifica dei workflow. Poi apri
-      <strong>Settings → Pages → Source: GitHub Actions</strong>. Serve essere
-      proprietario o amministratore del repository.
-    </li>
-    <li>
-      Apri
-      <strong
-        >Actions → Pubblica app gratuita su Pages → Run workflow → main</strong
-      >. Il flusso è esclusivamente manuale e si esegue solo se il repository è
-      pubblico. Non acquistare piani, non inserire una carta e non attivare
-      runner a pagamento. Se GitHub propone un costo, fermati: l’uso locale
-      resta disponibile.
-    </li>
-    <li>
-      Attendi il completamento e apri l’URL indicato dal deployment. Il flusso
-      gestisce automaticamente il sottopercorso del repository.
-    </li>
-    <li>
-      Dal telefono visita l’URL. In Chrome scegli «Installa app» dal menu; in
-      Safari scegli Condividi → «Aggiungi alla schermata Home». Dopo la prima
-      apertura online completata, la build funziona offline. Il percorso di
-      sviluppo Vite non è pensato per l’installazione offline.
-    </li>
-  </ol>
   <h2>3. Inserisci il tuo primo conto</h2>
   <ol>
     <li>
@@ -211,46 +196,161 @@
     </li>
   </ol>
   <h2>6. Usa gli stessi dati su due dispositivi</h2>
+  <p>
+    Apri il sito e accedi con lo stesso account sul computer e sul telefono: i
+    dati vengono caricati online, senza trasferire JSON o configurare chiavi. Se
+    una pagina è già aperta, «Aggiorna dati online» legge la versione più
+    recente. I backup restano un’esportazione facoltativa dal Profilo, non il
+    meccanismo di sincronizzazione.
+  </p>
+  <h2 id="cloud">
+    Il tuo patrimonio online: solo accesso, nessuna configurazione
+  </h2>
+  <p>
+    Il progetto Supabase di BauPatrimonio è già configurato. Sono stati
+    verificati schema dell’archivio, Row Level Security e funzione di
+    salvataggio; l’URL del sito Auth è impostato su GitHub Pages. Le
+    registrazioni pubbliche sono disabilitate: si usa l’utente personale già
+    creato.
+  </p>
   <ol>
+    <li>Apri l’app e scegli <strong>Inizia il mio patrimonio</strong>.</li>
     <li>
-      Sul dispositivo aggiornato: Profilo in alto a destra →
-      <strong>Scarica backup strutturato</strong>.
+      Inserisci email e password del tuo utente BauPatrimonio. Non sono le
+      credenziali della banca o la password del database. Il caricamento del tuo
+      archivio è automatico; se è il tuo primo accesso e non ci sono dati
+      remoti, viene creato un archivio vuoto, mai la demo o una vecchia copia
+      locale.
     </li>
     <li>
-      Trasferisci il JSON con un mezzo sotto il tuo controllo (per esempio cavo,
-      AirDrop o condivisione locale). Il JSON contiene dati finanziari in
-      chiaro: non metterlo nel repository o in un link pubblico.
+      Aggiungi o aggiorna una voce. In alto vedrai prima
+      <strong>Salvataggio online in corso…</strong> e, solo dopo risposta
+      positiva del server, <strong>Salvato online</strong>.
     </li>
     <li>
-      Sull’altro dispositivo scegli il patrimonio personale → Profilo →
-      <strong>Ripristina backup JSON</strong>. Conferma la sostituzione solo
-      dopo aver esportato eventuali modifiche locali da conservare.
+      Sul telefono apri lo stesso sito e accedi con lo stesso utente. Ritrovi
+      l’archivio online senza copiare file, chiavi o URL. Dopo un ricaricamento
+      della pagina viene richiesto un nuovo accesso: la sessione resta in
+      memoria, non viene scritta nel browser.
     </li>
     <li>
-      Non modificare contemporaneamente entrambe le copie: non esiste fusione o
-      sincronizzazione automatica. Il backup demo si ripristina solo nella demo,
-      quello personale solo nell’archivio personale.
+      Se hai già l’app aperta su un altro dispositivo, usa
+      <strong>Aggiorna dati online</strong> per leggere le modifiche remote. Non
+      è sincronizzazione realtime. Evita modifiche contemporanee da più
+      dispositivi: la revisione del documento blocca le sovrascritture
+      accidentali.
+    </li>
+    <li>
+      Da Profilo scegli <strong>Esci dall’account</strong> per chiudere la
+      sessione e rimuovere i dati personali dalla memoria dell’app. I dati già
+      salvati restano online.
     </li>
   </ol>
-  <h2>7. Limiti dichiarati e banche</h2>
+  <h3>Se il salvataggio non riesce</h3>
   <p>
-    La valuta di riferimento è EUR; puoi conservare valori originali EUR, USD,
-    GBP, CHF, JPY e CAD con cambi manuali datati verso EUR. Non sono presenti
-    quotazioni live, misura del rendimento, importazione PDF/XLSX, automazione
-    di rate o connessioni Fideuram/Trade Republic verificate. Nessuna sandbox
-    bancaria è stata collaudata. Non chiediamo password, PIN o OTP bancari. Usa
-    l’esportazione ufficiale dell’istituto se disponibile e compatibile, oppure
-    inserisci i valori a mano. Non serve comprare un connettore.
+    Le modifiche in sospeso restano in questa pagina, non sono considerate
+    salvate e non vengono scritte come archivio personale locale. Le nuove
+    modifiche sono bloccate fino alla risoluzione dell’errore.
+    <strong>Non chiudere o ricaricare la pagina.</strong> Puoi scaricare una
+    copia delle modifiche non salvate. Dopo un errore di rete puoi provare
+    «Riprova salvataggio»: viene usata la stessa revisione attesa, quindi non
+    può sostituire una nuova versione remota.
   </p>
   <p>
-    Lo schema PostgreSQL opzionale è conservato nel progetto per sviluppi futuri
-    ma non è usato dall’app standard: non devi configurare Supabase né un
-    database. Su un dispositivo condiviso chi usa lo stesso profilo browser può
-    leggere i dati locali.
+    «Aggiorna dati online» sostituisce il contenuto visualizzato con quello
+    remoto: in presenza di modifiche non salvate chiede conferma. Non unisce due
+    copie. Se il server aveva già registrato la richiesta ma la risposta si è
+    persa, una ripetizione può essere bloccata per revisione diversa: conserva
+    la copia, rileggi il cloud e confronta i dati.
+  </p>
+  <h3>Se l’accesso non riesce</h3>
+  <p>
+    Verifica connessione, email e password dell’utente dell’app. Se hai
+    dimenticato la password, il proprietario del progetto può gestire il
+    recupero dalla dashboard Supabase → Authentication → Users. Non inviare
+    password o chiavi in chat. Il piano Free può sospendere progetti inattivi:
+    il proprietario può riattivarli dalla dashboard. Non acquistare upgrade o
+    add-on;
+    <a href="https://supabase.com/pricing">limiti ufficiali del piano</a>.
+  </p>
+  <p>
+    Questa modalità non recupera né carica automaticamente archivi personali
+    salvati dalle vecchie versioni nel browser: restano intatti e separati, per
+    non attribuire dati locali a un account sbagliato. Puoi ripristinare un
+    backup JSON dal Profilo; il ripristino sostituisce l’archivio online dopo
+    conferma e viene salvato con gli stessi controlli di revisione.
+  </p>
+  <p>
+    La configurazione tecnica è già inclusa nell’app: non devi eseguire SQL,
+    inserire chiavi o premere «Apri cloud». La chiave pubblica identifica il
+    progetto, ma non autorizza l’accesso ai dati: sono autenticazione e RLS a
+    proteggerli. Non è cifratura end-to-end: il proprietario del progetto
+    conserva i poteri amministrativi sul database. Nessun connettore Fideuram è
+    attivato da questa procedura.
+  </p>
+  <h2>Grafici del solo portafoglio e rendimento</h2>
+  <p>
+    In Insight scegli <strong>Investimenti</strong>: andamento, composizione e
+    confronto includono tutti gli investimenti insieme, senza liquidità,
+    pensione, case o debiti. I dettagli del dossier non vengono contati due
+    volte. Apri «Leggi tra i numeri» per confronto tra date e qualità dei dati.
+  </p>
+  <p>
+    Il rendimento usa Modified Dietz, non annualizzato, e viene mostrato solo
+    dopo conferma della completezza dei flussi. Servono valutazioni di tutti gli
+    investimenti nelle due date e flussi EUR della tua quota. Acquisti e vendite
+    registrati ora includono i costi; i movimenti precedenti o importati non
+    vengono classificati automaticamente. Le opzioni «Flussi e metodo di
+    calcolo» consentono di classificarli e aggiungere flussi mancanti senza
+    modificare i saldi. Flussi fra due investimenti si compensano, non sono
+    ingressi netti. Non duplicare acquisti o vendite già registrati.
+  </p>
+  <p>
+    La percentuale non è un rendimento certificato o fiscale: include soltanto
+    costi, imposte e proventi effettivamente rappresentati nei dati.
+    Archiviazioni nel periodo, dati mancanti o capitale ponderato non positivo
+    impediscono il risultato o la percentuale. L’app non inventa un rendimento
+    da una semplice differenza di valore.
+  </p>
+  <h2>7. Banche: cosa è stato verificato</h2>
+  <p>
+    Verifica delle fonti ufficiali: 19 novembre 2026. Fideuram dispone di un
+    percorso PSD2 tramite CBI Globe; Trade Republic documenta un’API AIS per
+    conti, saldi e movimenti. Enable Banking documenta Fideuram in Italia e
+    Trade Republic anche per clienti italiani. Queste evidenze non certificano
+    un conto specifico né il funzionamento dell’integrazione nell’app: nessun
+    connettore è attivo o collaudato.
+  </p>
+  <p>
+    I
+    <a href="https://enablebanking.com/terms/" target="_blank" rel="noreferrer"
+      >termini di Enable Banking</a
+    >
+    consentono l’uso gratuito personale, limitato ai propri conti collegati in
+    modalità restricted. Occorrono registrazione, applicazione personale, chiave
+    privata e consensi sul sito della banca/provider. Non inserire tali chiavi
+    nel sito, nel repository o in chat.
+  </p>
+  <p>
+    <strong>GitHub Pages da solo non è un backend bancario.</strong> Per
+    automatizzare l’accesso servirebbe un servizio server riservato aggiuntivo.
+    Non è stato attivato. L’archivio Supabase descritto sopra salva i tuoi dati,
+    ma non implementa ancora il connettore bancario. Le posizioni titoli, ETF e
+    previdenza non risultano coperte dalle API AIS consultate. Restano
+    disponibili subito manuale e CSV. Il dettaglio di fonti e limiti è nella
+    sezione Fonti dell’app.
+  </p>
+  <p>
+    La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
+    import PDF/XLSX o sincronizzazione realtime. Il sito online non implica da
+    solo che i dati siano salvati online: occorre accedere all’account e
+    attendere lo stato «Salvato online».
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
-    stati attivati servizi esterni, conti reali o abbonamenti. Il merge della PR
-    non esegue il workflow Pages: la scelta di pubblicare l’app resta manuale.
+    stati acquistati abbonamenti o collegati conti bancari reali. La
+    configurazione Auth del progetto Supabase esistente è stata completata
+    dall’agente. GitHub Pages risulta attivo sulla cartella docs del branch
+    corrente.
   </footer>
 </html>

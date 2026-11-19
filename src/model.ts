@@ -51,6 +51,8 @@ export type Movement = {
   currency: string;
   description: string;
   importId?: string;
+  /** Flusso EUR di quota posseduta: ingresso positivo, uscita negativa. */
+  performanceFlow?: string;
 };
 export type Store = {
   assets: Asset[];

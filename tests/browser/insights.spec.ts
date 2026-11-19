@@ -1,3 +1,4 @@
+import { mockCloud, signIn } from "./cloud-helpers";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 for (const width of [320, 390, 1440])
@@ -117,7 +118,9 @@ test("punti navigabili da tastiera e grafico parziale senza cascata", async ({
 });
 test("valore non disponibile resta mancante, non zero", async ({ page }) => {
   await page.goto("/");
+  await mockCloud(page);
   await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await signIn(page);
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page.getByRole("button", { name: "Immobili", exact: false }).click();
   await page.getByLabel("Nome della voce").fill("Stima da fare");
@@ -131,9 +134,12 @@ test("importa strumenti con quantità e prezzo e preserva il totale del dossier"
   page,
 }) => {
   await page.goto("/");
+  await mockCloud(page);
   await page.getByRole("button", { name: "Inizia il mio patrimonio" }).click();
+  await signIn(page);
   await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
   await page
+    .getByRole("dialog")
     .getByRole("button", { name: "Investimenti", exact: false })
     .click();
   await page.getByLabel("Nome della voce").fill("Dossier importato");
