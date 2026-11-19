@@ -12,11 +12,11 @@ La versione standard non usa Supabase ospitato, servizi bancari, API a pagamento
 
 ## Uso online: nessuna installazione di Node.js
 
-Apri **https://sylarpower.github.io/BauPatrimonio/** quando il deployment Pages risulta completato. Il codice e i dati di esempio sono pubblici, i tuoi dati personali restano nel browser. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
+**Pubblicazione preparata, non ancora attiva:** il tentativo API di attivare Pages ha restituito `403 Resource not accessible by integration`. Serve un solo intervento del proprietario: apri [Settings → Pages](https://github.com/SylarPower/BauPatrimonio/settings/pages), scegli **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs → Save**. Nessun Node.js e nessun workflow da creare. Dopo il deployment apri **https://sylarpower.github.io/BauPatrimonio/**. Il codice e i dati di esempio sono pubblici, i tuoi dati personali restano nel browser. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
 
 ### Pubblicazione per il manutentore
 
-La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages usa **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs** per questa pubblicazione; dopo un eventuale merge si può scegliere `main /docs`. Questo non pubblica il database locale o backup.
+La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages da selezionare è **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs** per questa pubblicazione; dopo un eventuale merge si può scegliere `main /docs`. Questo non pubblica il database locale o backup.
 
 I comandi Node sono esclusivamente per chi sviluppa/manutiene, non per chi usa l’app:
 
