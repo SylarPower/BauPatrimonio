@@ -1,4 +1,4 @@
-# BauPatrimonio — versione gratuita locale
+# BauPatrimonio — app web gratuita
 
 Taccuino personale del patrimonio, in italiano: **quanto possiedo, quanto devo e cosa è cambiato**. React 19, TypeScript, Vite, PWA, font locali e Decimal.js. Non dispone pagamenti e non invia ordini di investimento.
 
@@ -10,50 +10,23 @@ La versione standard non usa Supabase ospitato, servizi bancari, API a pagamento
 
 ➡ **Guida utente passo passo:** apri `public/GUIDA.html` oppure **Profilo → Guida passo passo** nell'app. È disponibile anche offline nella build di produzione.
 
-## Avvio manuale dal computer
+## Uso online: nessuna installazione di Node.js
 
-1. Installa Node.js **22.12+** e npm.
-2. Scarica il progetto e apri un terminale nella cartella.
-3. Esegui:
+Apri **https://sylarpower.github.io/BauPatrimonio/** quando il deployment Pages risulta completato. Il codice e i dati di esempio sono pubblici, i tuoi dati personali restano nel browser. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. Dopo la prima apertura completa funziona anche offline.
+
+### Pubblicazione per il manutentore
+
+La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages usa **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs** per questa pubblicazione; dopo un eventuale merge si può scegliere `main /docs`. Questo non pubblica il database locale o backup.
+
+I comandi Node sono esclusivamente per chi sviluppa/manutiene, non per chi usa l’app:
 
 ```sh
 npm ci
-npm run dev
+npm run dev             # sviluppo
+npm run prepare:pages   # genera docs/ con base /BauPatrimonio/
 ```
 
-4. Apri l'URL mostrato da Vite. Nessun `.env` richiesto.
-5. Per provare la versione installabile/offline:
-
-```sh
-npm run build
-npm run preview
-```
-
-Mantieni il terminale aperto durante l'uso locale. I server ascoltano su `0.0.0.0` per la preview/rete locale e accettano l'host della preview. Dal telefono `localhost` indica il telefono, non il PC. L'installazione PWA richiede HTTPS oppure localhost sul dispositivo stesso.
-
-## Telefono: pubblicazione facoltativa senza backend
-
-Puoi usare GitHub Pages del **repository pubblico** per ospitare solo i file statici dell'app, non i dati del tuo patrimonio. Nessun dominio a pagamento necessario. La pubblicazione è **manuale**, non viene eseguita da push o merge. Non è stata attivata durante lo sviluppo.
-
-1. Dopo il merge, apri `docs/pages-workflow.yml.example` su GitHub e copia il contenuto. Dal repository scegli **Add file → Create new file**, nome `.github/workflows/pages.yml`, incolla e salva. Serve un utente con permessi di modifica dei workflow: la connessione dell'agente non li possiede, perciò il modello è consegnato come documento non eseguibile, senza aggirare il vincolo.
-2. GitHub → **Settings → Pages → Source: GitHub Actions**. Serve il ruolo amministratore/proprietario.
-3. **Actions → Pubblica app gratuita su Pages → Run workflow → main**.
-4. Attendi il deployment e apri l'URL indicato, anche dal telefono.
-5. Chrome → Installa app; Safari → Condividi → Aggiungi alla schermata Home.
-6. Prima apertura online completata, poi utilizzo offline.
-
-Il modello `docs/pages-workflow.yml.example`, una volta installato come workflow `pages.yml`, è limitato ai repository **pubblici**, con runner standard, e non si esegue automaticamente. Non attivare piani a pagamento, carta, runner speciali o upgrade; se GitHub richiede un acquisto, fermati e usa l'app localmente. Il repository verificato durante lo sviluppo è pubblico. Eventuali cambiamenti futuri delle condizioni del fornitore vanno verificati prima dell'attivazione.
-
-Il workflow calcola il percorso Pages (`/BauPatrimonio/` per questo repository). È stato verificato anche il funzionamento sotto un sottopercorso. Per altri hosting statici pubblica solo `dist/` su HTTPS:
-
-```sh
-# Hosting alla radice:
-npm run build
-# Hosting sotto /nome-progetto/:
-BAU_BASE_PATH=/nome-progetto/ npm run build
-```
-
-Non caricare backup, estratti conto o `.env` nel repository/hosting. L'URL dell'app non è un link pubblico ai dati: il sito scarica codice e demo, i patrimoni personali restano su ciascun browser. Non sono cifrati: chi usa lo stesso profilo browser può leggerli.
+Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa facoltativa non installata: la connessione non ha permessi di modifica dei workflow. Non attivare piani a pagamento, runner speciali o upgrade. Lo stato effettivo della pubblicazione va verificato nella pagina Settings → Pages, non dedotto dalla presenza dei file.
 
 ## Funziona subito
 
@@ -126,9 +99,9 @@ Esempi in `public/examples/`, scaricabili da Fonti e dalla guida. **Sono traccia
 
 ## Banche e sandbox: stato effettivo
 
-**Non è attivo né testato in sandbox alcun connettore bancario.** Fideuram e Trade Republic Italia, separatamente per liquidità, movimenti, dossier e storico: **Da verificare**. La richiesta di gratuità non autorizza a simulare collegamenti o usare API private.
+**Nessun connettore bancario è attivo o testato in sandbox.** Verifica documentale aggiornata al 19 novembre 2026: Fideuram dispone di un percorso AIS tramite CBI Globe ed è citata nella documentazione Enable Banking per l’Italia. Trade Republic documenta conti, saldi e movimenti e il provider include clienti italiani; i movimenti risultano limitati a importo, valuta e data, senza descrizioni. **Le posizioni titoli/ETF e la previdenza non risultano coperte dalle API AIS consultate.**
 
-Non sono stati acquistati contratti o attivati servizi. Non si chiedono password, PIN, OTP o segreti in chat. Manuale e CSV sono disponibili subito. Documentazione corrente, copertura per prodotto, autorizzazioni e disponibilità effettiva gratuita devono essere verificate prima di un eventuale adattatore. Vedi `docs/COLLEGAMENTI.md`.
+I termini Enable Banking prevedono uso gratuito personale limitato ai propri Linked Accounts, modalità restricted. Richiede registrazione personale, app, consensi e un backend riservato per la chiave privata: GitHub Pages da solo non può sincronizzare le banche. Non sono stati attivati conti o servizi, accettati contratti o acquistati abbonamenti. Fonti, limiti, condizioni e passi mancanti in [`docs/COLLEGAMENTI.md`](docs/COLLEGAMENTI.md), anche nell’interfaccia Fonti.
 
 ## Architettura e riservatezza
 

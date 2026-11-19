@@ -43,6 +43,12 @@ import Importer from "./Importer";
 import Portfolio from "./Portfolio";
 import { isStore } from "./validation";
 import Insights from "./Insights";
+import {
+  bankCoverage,
+  coverageChecked,
+  personalProviderTerms,
+  personalProviderActivation,
+} from "./bankCoverage";
 import OperationForm from "./OperationForm";
 import {
   categories,
@@ -946,23 +952,24 @@ function App() {
                     Solo lettura, quando disponibili
                   </span>
                 </div>
-                {["Fideuram", "Trade Republic"].map((name, i) => (
-                  <section className="card bank-card" key={name}>
+                {bankCoverage.map((bank, i) => (
+                  <section className="card bank-card" key={bank.name}>
                     <span className="bank-logo">
                       {i ? "TR" : <Landmark size={23} />}
                     </span>
                     <div>
-                      <h3>{name}</h3>
+                      <h3>{bank.name}</h3>
                       <p>
-                        Liquidità, movimenti e titoli: copertura Italia da
-                        verificare.
+                        {i
+                          ? "Conto e movimenti: percorso AIS documentato. Titoli non verificati."
+                          : "Conto e movimenti: percorso AIS documentato. Dossier e pensione non verificati."}
                       </p>
                       <small>
                         Nessun collegamento attivo · Aggiornamento manuale o CSV
                         disponibile
                       </small>
                     </div>
-                    <span className="unavailable">Da verificare</span>
+                    <span className="unavailable">Non configurato</span>
                   </section>
                 ))}
                 <div className="info-line">
@@ -1430,20 +1437,57 @@ function App() {
               </strong>
             </p>
             <p>
-              Non è stato possibile verificare la documentazione ufficiale
-              corrente da questo ambiente. Non attribuiamo quindi copertura a
-              Fideuram o Trade Republic, né per conti italiani né per dossier
-              titoli.
+              Verifica documentale: {coverageChecked}. Nessun conto collegato,
+              nessuna sandbox o produzione bancaria collaudata.
+            </p>
+            {bankCoverage.map((bank) => (
+              <div key={bank.name}>
+                <h3>{bank.name}</h3>
+                <p>
+                  {bank.country}. {bank.account}
+                </p>
+                <p>{bank.transactions}</p>
+                <p>{bank.securities}</p>
+                <p>
+                  <a href={bank.source} target="_blank" rel="noreferrer">
+                    Fonte ufficiale della banca
+                  </a>{" "}
+                  ·{" "}
+                  <a
+                    href={bank.providerSource}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Documentazione del provider
+                  </a>
+                </p>
+              </div>
+            ))}
+            <h3>Possibile strada gratuita per uso personale</h3>
+            <p>
+              I{" "}
+              <a href={personalProviderTerms} target="_blank" rel="noreferrer">
+                termini di Enable Banking
+              </a>{" "}
+              prevedono uso gratuito limitato ai propri conti collegati («Linked
+              Accounts»), in modalità restricted, non un servizio bancario
+              pubblico gratuito per tutti. Sono necessari un account del
+              provider, un’applicazione personale e i consensi.{" "}
+              <a
+                href={personalProviderActivation}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Procedura ufficiale
+              </a>
+              .
             </p>
             <p>
-              Saldi, movimenti, posizioni titoli e storico richiedono verifiche
-              separate. L’open banking di un conto di pagamento non garantisce
-              accesso a investimenti o previdenza.
-            </p>
-            <p>
-              Provider autorizzato, contratti, costi, credenziali gestore,
-              sandbox e produzione: <strong>da verificare</strong>. Nessuna
-              sincronizzazione è stata testata in sandbox.
+              GitHub Pages ospita soltanto file statici: non può proteggere una
+              chiave privata né eseguire callback e sincronizzazioni server. Per
+              collegare i conti serve anche un backend riservato, da configurare
+              separatamente. Non inserire segreti in GitHub, nel browser o in
+              chat. Non è stato attivato alcun servizio esterno.
             </p>
             <div className="warning">
               Puoi usare subito dati manuali e CSV nel formato dell’app. Non

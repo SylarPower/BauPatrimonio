@@ -10,7 +10,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:e2e": "playwright test",
     "test:db": "node tests/database.mjs",
-    "format": "prettier --write src tests scripts *.ts *.json public/sw.js README.md docs"
+    "format": "prettier --write src tests scripts *.ts *.json public/sw.js README.md docs",
+    "prepare:pages": "node scripts/prepare-pages.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.6",

@@ -68,9 +68,9 @@
   ><a href="./">← Torna all’app</a>
   <h1>Il tuo patrimonio, senza abbonamenti.</h1>
   <p>
-    Guida pratica della versione gratuita locale. Nessun account, carta di
-    credito, database ospitato o API bancaria è necessario. Tutti i calcoli e le
-    importazioni avvengono nel browser.
+    Guida pratica dell’app gratuita accessibile dal web. Nessun account, carta
+    di credito, database ospitato o API bancaria è necessario. Tutti i calcoli e
+    le importazioni avvengono nel browser.
   </p>
   <aside>
     <strong>Da sapere prima di iniziare</strong><br />I dati stanno nel browser,
@@ -78,57 +78,38 @@
     dati del browser può cancellare il patrimonio: scarica regolarmente il
     backup JSON. «Nascondi importi» non cifra i dati.
   </aside>
-  <h2>1. Avvia dal computer</h2>
+  <h2>1. Apri l’app, senza installare programmi</h2>
   <ol>
-    <li>Installa Node.js 22.12 o successivo e scarica il progetto.</li>
-    <li>Apri un terminale nella cartella ed esegui <code>npm ci</code>.</li>
     <li>
-      Esegui <code>npm run dev</code> e apri l’indirizzo mostrato da Vite. Per
-      una versione offline installabile usa invece <code>npm run build</code>,
-      poi <code>npm run preview</code>. Mantieni il terminale aperto durante
-      l’uso locale.
+      Apri <a href="./">BauPatrimonio nel browser</a>, sul computer o sul
+      telefono. Non devi scaricare il repository, installare Node.js o usare il
+      terminale.
     </li>
     <li>
-      Non compilare chiavi o credenziali: il file <code>.env</code> non serve.
+      Scegli «Inizia il mio patrimonio» oppure «Prova con dati di esempio».
+    </li>
+    <li>
+      Salva il sito nei preferiti. GitHub Pages distribuisce l’app; i tuoi
+      importi restano nel browser e non vengono salvati nel repository.
     </li>
   </ol>
-  <h2>2. Telefono e installazione, senza server a pagamento</h2>
+  <h2>2. Installazione facoltativa sul telefono</h2>
+  <ol>
+    <li>Apri il sito con Chrome o Safari.</li>
+    <li>
+      Chrome: menu → «Installa app». Safari: Condividi → «Aggiungi alla
+      schermata Home».
+    </li>
+    <li>
+      Attendi la prima apertura online completa, poi puoi utilizzare l’app anche
+      offline.
+    </li>
+  </ol>
   <p>
-    Per un URL HTTPS comodo da aprire dal telefono puoi pubblicare
-    <em>solo l’app statica</em> su GitHub Pages del repository pubblico. Nessun
-    patrimonio personale viene pubblicato: viene salvato sul singolo
-    dispositivo.
+    Non devi creare workflow o account sviluppatore per usare il sito. La
+    pubblicazione dei file statici è gestita dal manutentore tramite la cartella
+    <code>docs/</code>.
   </p>
-  <ol>
-    <li>
-      Dopo il merge, apri <code>docs/pages-workflow.yml.example</code> su GitHub
-      e copia il testo. Scegli <strong>Add file → Create new file</strong>, nome
-      <code>.github/workflows/pages.yml</code>, incolla e salva. Questa
-      operazione va fatta da te: la connessione dell’agente non ha permessi di
-      modifica dei workflow. Poi apri
-      <strong>Settings → Pages → Source: GitHub Actions</strong>. Serve essere
-      proprietario o amministratore del repository.
-    </li>
-    <li>
-      Apri
-      <strong
-        >Actions → Pubblica app gratuita su Pages → Run workflow → main</strong
-      >. Il flusso è esclusivamente manuale e si esegue solo se il repository è
-      pubblico. Non acquistare piani, non inserire una carta e non attivare
-      runner a pagamento. Se GitHub propone un costo, fermati: l’uso locale
-      resta disponibile.
-    </li>
-    <li>
-      Attendi il completamento e apri l’URL indicato dal deployment. Il flusso
-      gestisce automaticamente il sottopercorso del repository.
-    </li>
-    <li>
-      Dal telefono visita l’URL. In Chrome scegli «Installa app» dal menu; in
-      Safari scegli Condividi → «Aggiungi alla schermata Home». Dopo la prima
-      apertura online completata, la build funziona offline. Il percorso di
-      sviluppo Vite non è pensato per l’installazione offline.
-    </li>
-  </ol>
   <h2>3. Inserisci il tuo primo conto</h2>
   <ol>
     <li>
@@ -232,21 +213,38 @@
       quello personale solo nell’archivio personale.
     </li>
   </ol>
-  <h2>7. Limiti dichiarati e banche</h2>
+  <h2>7. Banche: cosa è stato verificato</h2>
   <p>
-    La valuta di riferimento è EUR; puoi conservare valori originali EUR, USD,
-    GBP, CHF, JPY e CAD con cambi manuali datati verso EUR. Non sono presenti
-    quotazioni live, misura del rendimento, importazione PDF/XLSX, automazione
-    di rate o connessioni Fideuram/Trade Republic verificate. Nessuna sandbox
-    bancaria è stata collaudata. Non chiediamo password, PIN o OTP bancari. Usa
-    l’esportazione ufficiale dell’istituto se disponibile e compatibile, oppure
-    inserisci i valori a mano. Non serve comprare un connettore.
+    Verifica delle fonti ufficiali: 19 novembre 2026. Fideuram dispone di un
+    percorso PSD2 tramite CBI Globe; Trade Republic documenta un’API AIS per
+    conti, saldi e movimenti. Enable Banking documenta Fideuram in Italia e
+    Trade Republic anche per clienti italiani. Queste evidenze non certificano
+    un conto specifico né il funzionamento dell’integrazione nell’app: nessun
+    connettore è attivo o collaudato.
   </p>
   <p>
-    Lo schema PostgreSQL opzionale è conservato nel progetto per sviluppi futuri
-    ma non è usato dall’app standard: non devi configurare Supabase né un
-    database. Su un dispositivo condiviso chi usa lo stesso profilo browser può
-    leggere i dati locali.
+    I
+    <a href="https://enablebanking.com/terms/" target="_blank" rel="noreferrer"
+      >termini di Enable Banking</a
+    >
+    consentono l’uso gratuito personale, limitato ai propri conti collegati in
+    modalità restricted. Occorrono registrazione, applicazione personale, chiave
+    privata e consensi sul sito della banca/provider. Non inserire tali chiavi
+    nel sito, nel repository o in chat.
+  </p>
+  <p>
+    <strong>GitHub Pages da solo non è un backend bancario.</strong> Per
+    automatizzare l’accesso servirebbe un servizio server riservato aggiuntivo.
+    Non è stato attivato e richiede una scelta separata. Le posizioni titoli,
+    ETF e previdenza non risultano coperte dalle API AIS consultate. Restano
+    disponibili subito manuale e CSV. Il dettaglio di fonti e limiti è nella
+    sezione Fonti dell’app.
+  </p>
+  <p>
+    La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
+    import PDF/XLSX o sincronizzazione automatica tra dispositivi. Il sito
+    online non implica che i tuoi dati siano salvati online: senza un backend
+    personale i due browser restano indipendenti.
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
