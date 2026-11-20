@@ -196,13 +196,11 @@ it("SMTP non autorizzato non viene mascherato come successo", async () => {
   const { cloudSignUp } = await import("./cloud");
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ code: "email_address_not_authorized" }), {
-          status: 400,
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: "email_address_not_authorized" }), {
+        status: 400,
+      }),
+    ),
   );
   await expect(cloudSignUp("a@b.test", "not-a-real-password")).rejects.toThrow(
     "servizio email",
@@ -227,4 +225,57 @@ it("reinvia solo conferma signup, senza password o token privilegiati", async ()
     email: "a@b.test",
   });
   expect(fetch.mock.calls[0][1].headers.apikey).toMatch(/^sb_publishable_/);
+});
+
+it("distingue credenziali errate, conferma e limite senza esporre dettagli remoti", async () => {
+  for (const [status, code, expected] of [
+    [400, "invalid_credentials", "non corrette"],
+    [400, "email_not_confirmed", "non ancora confermato"],
+    [429, "over_request_rate_limit", "Troppi tentativi"],
+  ] as const) {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ code, message: "private server detail" }),
+            { status },
+          ),
+        ),
+    );
+    await expect(cloudLogin(c, " user@example.test ", "wrong")).rejects.toThrow(
+      expected,
+    );
+    expect(cloudActive()).toBe(false);
+  }
+});
+it("recupero valida il bearer prima di aggiornare password, senza aprire archivi", async () => {
+  const { cloudResetPassword } = await import("./cloud");
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("{}"))
+    .mockResolvedValueOnce(new Response("{}"))
+    .mockResolvedValueOnce(new Response(null, { status: 204 }));
+  vi.stubGlobal("fetch", fetch);
+  await cloudResetPassword("test-only", "new-test-password");
+  expect(fetch.mock.calls.map((x) => new URL(x[0]).pathname)).toEqual([
+    "/auth/v1/user",
+    "/auth/v1/user",
+    "/auth/v1/logout",
+  ]);
+  expect(fetch.mock.calls[1][1].method).toBe("PUT");
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
+    password: "new-test-password",
+  });
+  expect(cloudActive()).toBe(false);
+});
+it("recupero con token scaduto non aggiorna nulla", async () => {
+  const { cloudResetPassword } = await import("./cloud");
+  const fetch = vi.fn().mockResolvedValue(new Response("{}", { status: 401 }));
+  vi.stubGlobal("fetch", fetch);
+  await expect(
+    cloudResetPassword("expired", "new-test-password"),
+  ).rejects.toThrow("scaduto");
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

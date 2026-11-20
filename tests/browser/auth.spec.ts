@@ -46,6 +46,11 @@ test("creazione account richiede conferma, non apre archivi e consente reinvio",
   expect(signup).toBe(1);
   expect(reads).toBe(0);
   await expect(page.locator(".net-amount")).toHaveCount(0);
+  await page.clock.install();
+  await expect(
+    page.getByRole("button", { name: "Invia di nuovo la conferma" }),
+  ).toBeDisabled();
+  await page.clock.fastForward(61000);
   await page
     .getByRole("button", { name: "Invia di nuovo la conferma" })
     .click();
@@ -131,3 +136,56 @@ for (const width of [320, 390, 1440])
       page.getByRole("heading", { name: "Crea il tuo account" }),
     ).toBeVisible();
   });
+
+test("recupero dal link email cambia password senza leggere patrimonio e pulisce URL", async ({
+  page,
+}) => {
+  const paths: string[] = [];
+  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, async (r) => {
+    const path = new URL(r.request().url()).pathname;
+    paths.push(path);
+    expect(path).toMatch(/^\/auth\/v1\/(user|logout)$/);
+    return r.fulfill({ json: {} });
+  });
+  await page.goto(
+    "/#access_token=test-only&refresh_token=discard&type=recovery",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Nuova password" }),
+  ).toBeVisible();
+  expect(page.url()).not.toContain("access_token");
+  await page
+    .getByLabel("Nuova password", { exact: true })
+    .fill("new-test-password");
+  await page
+    .getByLabel("Conferma password", { exact: true })
+    .fill("new-test-password");
+  await page.getByRole("button", { name: "Salva nuova password" }).click();
+  await expect(page.getByRole("status")).toContainText("Password aggiornata");
+  expect(paths).toEqual(["/auth/v1/user", "/auth/v1/user", "/auth/v1/logout"]);
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
+    "test-only",
+  );
+  await expect(page.getByRole("link", { name: "Vai ad Accedi" })).toBeVisible();
+});
+test("errore login mostra causa comprensibile e non apre archivio", async ({
+  page,
+}) => {
+  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, (r) =>
+    r.fulfill({ status: 400, json: { code: "invalid_credentials" } }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accedi o crea account" }).click();
+  await page.getByLabel("Email", { exact: true }).fill("test@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("wrong-test-password");
+  await page
+    .locator(".auth-card form")
+    .getByRole("button", { name: "Accedi", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Email o password non corrette",
+  );
+  await expect(page.locator(".net-amount")).toHaveCount(0);
+});

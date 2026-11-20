@@ -183,3 +183,7 @@ L’interfaccia offre **Accedi / Crea account**, conferma password, conferma ema
 Il gestore ha accettato esplicitamente gli stessi limiti della configurazione BauSplit: signup abilitato, conferma email obbligatoria, nessun SMTP esterno e nessun costo aggiuntivo. Il mittente integrato invia solo agli indirizzi autorizzati del team Supabase e ha un limite di 2 email/ora per progetto. **Non è una registrazione aperta a qualsiasi visitatore**: gli altri indirizzi non possono completare la conferma. L’interfaccia mostra questa limitazione e gli errori di invio senza dichiarare un successo inesistente. Non è stata verificata la consegna reale delle email: i test browser usano risposte simulate.
 
 Per aprire in futuro la registrazione a tutti servirà un mittente SMTP verificato. Non disabilitare la conferma email per aggirare i limiti e non inserire credenziali nel repository o nella chat. La sorgente GitHub Pages prevista è `main` → `/docs`.
+
+### Recupero password
+
+“Password dimenticata?” richiede l’email a Supabase con gli stessi limiti di invio. Il link `type=recovery` apre il cambio password, non il login: token solo in memoria, rimosso immediatamente dall’URL, verificato con Supabase Auth prima dell’aggiornamento. Non viene letto o scritto alcun archivio patrimoniale. Dopo il cambio password occorre accedere normalmente. Le richieste email hanno una pausa locale di 60 secondi, che non sostituisce né aggira i limiti del server.

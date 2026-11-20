@@ -1,5 +1,6 @@
-import { consumeAuthReturn } from "./auth-return";
+import { consumeAuthReturn, takeRecoveryToken } from "./auth-return";
 import React from "react";
+import AuthRecovery from "./AuthRecovery";
 import { createRoot } from "react-dom/client";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
@@ -11,9 +12,14 @@ import "./style.css";
 const authReturn = consumeAuthReturn(window.location, (url) =>
   window.history.replaceState(null, "", url),
 );
+const recoveryToken = takeRecoveryToken();
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App authReturn={authReturn} />
+    {authReturn === "recovery" ? (
+      <AuthRecovery token={recoveryToken} />
+    ) : (
+      <App authReturn={authReturn} />
+    )}
   </React.StrictMode>,
 );
 if ("serviceWorker" in navigator)

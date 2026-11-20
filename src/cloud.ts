@@ -105,13 +105,28 @@ export async function cloudLogin(
     method: "POST",
     cache: "no-store",
     headers: { apikey: config.key, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: email.trim(), password }),
     signal: AbortSignal.timeout(20000),
   });
-  if (!r.ok)
-    throw Error(
-      "Accesso non riuscito. Verifica email, password e conferma dell’account in Supabase.",
-    );
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}));
+    if (r.status === 429)
+      throw Error(
+        "Troppi tentativi di accesso. Attendi prima di riprovare; non richiedere altre email.",
+      );
+    if (detail.code === "email_not_confirmed")
+      throw Error(
+        "Indirizzo email non ancora confermato. Apri il link di conferma prima di accedere.",
+      );
+    if (
+      detail.code === "invalid_credentials" ||
+      detail.error_code === "invalid_credentials"
+    )
+      throw Error(
+        "Email o password non corrette. Se non ricordi la password, usa Password dimenticata: non creare un secondo account.",
+      );
+    throw Error("Servizio di accesso non disponibile. Riprova più tardi.");
+  }
   const data = await r.json();
   if (ticket !== generation) throw Error("Accesso annullato.");
   session = {
@@ -256,4 +271,44 @@ export async function cloudResendConfirmation(email: string) {
     type: "signup",
     email: email.trim(),
   });
+}
+
+export async function cloudRequestRecovery(email: string) {
+  await authRegistrationRequest("recover", { email: email.trim() });
+}
+export async function cloudResetPassword(token: string, password: string) {
+  if (password.length < 10 || password.length > 128)
+    throw Error("Usa una password da 10 a 128 caratteri.");
+  const headers = {
+    apikey: cloudConfig.key,
+    Authorization: "Bearer " + token,
+    "Content-Type": "application/json",
+  };
+  const user = await fetch(cloudConfig.url + "/auth/v1/user", {
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!user.ok)
+    throw Error(
+      "Link di recupero scaduto o non valido. Richiedi una nuova email di recupero.",
+    );
+  const response = await fetch(cloudConfig.url + "/auth/v1/user", {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ password }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok)
+    throw Error(
+      "Password non aggiornata. Usa una password nuova oppure richiedi un nuovo link.",
+    );
+  // Il token di recupero non diventa mai una sessione dell’archivio.
+  await fetch(cloudConfig.url + "/auth/v1/logout?scope=global", {
+    method: "POST",
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  }).catch(() => {});
 }
