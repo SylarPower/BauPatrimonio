@@ -42,6 +42,15 @@ Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa f
 - Privacy visiva, CSV riepilogo, backup/ripristino JSON validato, eliminazione con conferma testuale.
 - PWA con manifest/icone e precache versionata di soli file statici. Nessuna risposta finanziaria privata, file importato o token nel service worker.
 
+## Struttura: quattro sezioni, un compito ciascuna
+
+- **Panoramica**: totale e grafici; filtro Tutto il patrimonio / Investimenti. Prima i grafici, poi il rendimento degli investimenti. «Confronto e qualità dei dati» resta chiuso finché serve.
+- **Patrimonio**: gestione delle voci e delle operazioni già eseguite.
+- **Storico**: consultazione di rilevazioni e movimenti.
+- **Fonti**: importazione e stato dei collegamenti bancari, senza fingere connessioni attive.
+
+Il Profilo raccoglie aspetto, accesso e gestione/esportazione dei dati personali. Nessun export dei grafici o nuovo livello di navigazione.
+
 ## Insight: più formati, non più rumore
 
 Due visualizzazioni principali e un approfondimento espandibile, non dieci grafici in competizione.
@@ -70,9 +79,9 @@ Il pannello rendimento usa **Modified Dietz**, non annualizzato: risultato = fin
 
 - **Cascata**, **Variazioni per voce**, **Tabella** tra date scelte.
 - La cascata non viene disegnata se i dati di una delle date sono parziali. Non trasformiamo un valore sconosciuto in una variazione negativa/positiva.
-- Nei portafogli grandi, la cascata mostra le sette variazioni più grandi e aggrega le altre; tabella e CSV mantengono tutto il dettaglio.
+- Nei portafogli grandi, la cascata mostra le sette variazioni più grandi e aggrega le altre; la tabella mantiene tutto il dettaglio.
 - Copertura dei dati, rilevazioni oltre 90 giorni, rapporto debiti/attività con limitazioni esplicite. Il rapporto non è consulenza né una misura della sostenibilità delle rate.
-- **SVG** vettoriale, **PNG** 2×, **CSV** dei dati. Colori coerenti con il tema corrente, legenda/etichette per leggere il file esportato. In modalità Tabella si esporta CSV; quando gli importi sono nascosti nessun export dell'insight è disponibile.
+- Nessuna esportazione dai grafici (SVG, PNG o CSV). Le tabelle restano consultabili nell’app; backup JSON e riepilogo personale CSV sono nel Profilo, separati dagli insight.
 
 Per provare tutte le viste: demo → **Prova i grafici con sei mesi di storico dimostrativo**. È un'azione opt-in nell'archivio demo, chiaramente fittizio; non inventa lo storico del patrimonio personale. I totali attuali restano quelli dello scenario richiesto.
 
@@ -149,7 +158,7 @@ Fallback Linux senza CDN browser:
 BAU_TEST_PRODUCTION=1 BAU_USE_PACKAGED_CHROMIUM=1 npm run test:e2e
 ```
 
-I test coprono demo 112k, primo conto e reload, nuove stime storiche, trasferimento, acquisto/vendita, capitale/interessi, archiviazione, dati mancanti/cambi, reimportazione, import strumenti, navigazione e insight in tutti i formati a **320, 390 e 1440 px** in Chiaro e AMOLED; tastiera, grafici parziali, export SVG/PNG/CSV, privacy ed esecuzione offline di produzione. Screenshot e download di test in `test-results/` ignorati da Git. Nessuna CI automatica su push/PR: per evitare consumo di servizi non richiesti i test si eseguono localmente. L'unico modello di workflow è il deploy Pages **opt-in**, da aggiungere manualmente con i propri permessi GitHub.
+I test coprono demo 112k, primo conto e reload, nuove stime storiche, trasferimento, acquisto/vendita, capitale/interessi, archiviazione, dati mancanti/cambi, reimportazione, import strumenti, navigazione e insight in tutti i formati a **320, 390 e 1440 px** in Chiaro e AMOLED; tastiera, grafici parziali, assenza di export dei grafici, privacy ed esecuzione offline di produzione. Screenshot e download di test in `test-results/` ignorati da Git. Nessuna CI automatica su push/PR: per evitare consumo di servizi non richiesti i test si eseguono localmente. L'unico modello di workflow è il deploy Pages **opt-in**, da aggiungere manualmente con i propri permessi GitHub.
 
 ## Struttura principale
 
@@ -158,7 +167,6 @@ src/App.tsx               sezioni, modali e archivio
 src/model.ts              rilevazioni, precisione, quote, demo e trasferimenti
 src/insights-model.ts      serie temporali, composizione, confronto e qualità
 src/Insights.tsx           visualizzazioni accessibili e formati alternativi
-src/chart-export.ts       SVG/PNG locali, nessun servizio di rendering
 src/operations.ts          registrazioni abbinate, capitale e costi/interessi
 src/Importer.tsx           CSV e strumenti con riconciliazione
 src/Portfolio.tsx          strumenti manuali e riconciliazione dossier
@@ -167,3 +175,11 @@ public/GUIDA.html          istruzioni utente offline
 scripts/build-sw.mjs      precache statica con percorso e hash di contenuto
 supabase/                 schema archivio online, RLS e test isolamento
 ```
+
+### Registrazione con il mittente integrato Supabase
+
+L’interfaccia offre **Accedi / Crea account**, conferma password, conferma email e reinvio del link. Il ritorno dalla mail rimuove i token dall’URL e richiede l’accesso con password: non importa sessioni dall’URL, non apre né crea un archivio fino all’accesso. Le risposte di registrazione non rivelano se un account esiste già.
+
+Il gestore ha accettato esplicitamente gli stessi limiti della configurazione BauSplit: signup abilitato, conferma email obbligatoria, nessun SMTP esterno e nessun costo aggiuntivo. Il mittente integrato invia solo agli indirizzi autorizzati del team Supabase e ha un limite di 2 email/ora per progetto. **Non è una registrazione aperta a qualsiasi visitatore**: gli altri indirizzi non possono completare la conferma. L’interfaccia mostra questa limitazione e gli errori di invio senza dichiarare un successo inesistente. Non è stata verificata la consegna reale delle email: i test browser usano risposte simulate.
+
+Per aprire in futuro la registrazione a tutti servirà un mittente SMTP verificato. Non disabilitare la conferma email per aggirare i limiti e non inserire credenziali nel repository o nella chat. La sorgente GitHub Pages prevista è `main` → `/docs`.

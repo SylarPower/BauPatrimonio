@@ -199,3 +199,61 @@ export async function cloudOpen(email: string, password: string) {
     throw e;
   }
 }
+
+// Signup abilitato con i limiti del mittente integrato, accettati dal gestore.
+// Nessun fallback a conferma automatica o chiavi privilegiate.
+export const authRedirectUrl = "https://sylarpower.github.io/BauPatrimonio/";
+async function authRegistrationRequest(
+  path: string,
+  body: Record<string, unknown>,
+) {
+  const response = await fetch(
+    cloudConfig.url +
+      "/auth/v1/" +
+      path +
+      "?redirect_to=" +
+      encodeURIComponent(authRedirectUrl),
+    {
+      method: "POST",
+      cache: "no-store",
+      headers: { apikey: cloudConfig.key, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20000),
+    },
+  );
+  if (response.ok) return;
+  const data = await response.json().catch(() => ({}));
+  const code = data.code || data.error_code;
+  if (code === "signup_disabled")
+    throw Error(
+      "Le nuove registrazioni non sono ancora disponibili. Puoi accedere se hai già un account.",
+    );
+  if (code === "email_address_not_authorized")
+    throw Error(
+      "Il servizio email integrato è limitato agli indirizzi autorizzati del team Supabase. Questo indirizzo non può ricevere la conferma con la configurazione attuale.",
+    );
+  if (
+    response.status === 429 ||
+    code === "over_email_send_rate_limit" ||
+    code === "over_request_rate_limit"
+  )
+    throw Error(
+      "Troppe richieste. Attendi prima di riprovare e controlla la posta, anche nello spam.",
+    );
+  if (code === "weak_password")
+    throw Error("Scegli una password più lunga e difficile da indovinare.");
+  throw Error(
+    "Registrazione non completata. Controlla i dati o riprova più tardi. Se hai già un account, usa Accedi.",
+  );
+}
+export async function cloudSignUp(email: string, password: string) {
+  if (password.length < 10 || password.length > 128)
+    throw Error("Usa una password da 10 a 128 caratteri.");
+  await authRegistrationRequest("signup", { email: email.trim(), password });
+}
+export async function cloudResendConfirmation(email: string) {
+  await authRegistrationRequest("resend", {
+    type: "signup",
+    email: email.trim(),
+  });
+}

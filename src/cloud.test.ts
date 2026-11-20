@@ -168,3 +168,63 @@ it("un errore nel caricamento automatico non crea un archivio sostitutivo", asyn
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(cloudActive()).toBe(false);
 });
+
+it("registrazione usa solo endpoint pubblico, redirect fisso e non inizializza archivi", async () => {
+  const { cloudSignUp, authRedirectUrl } = await import("./cloud");
+  const fetch = vi.fn().mockResolvedValue(new Response("{}"));
+  vi.stubGlobal("fetch", fetch);
+  await cloudSignUp(" new@example.test ", "not-a-real-password");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toContain(
+    "/auth/v1/signup?redirect_to=" + encodeURIComponent(authRedirectUrl),
+  );
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    email: "new@example.test",
+    password: "not-a-real-password",
+  });
+  expect(fetch.mock.calls[0][1].cache).toBe("no-store");
+  expect(cloudActive()).toBe(false);
+});
+it("password debole non viene inviata", async () => {
+  const { cloudSignUp } = await import("./cloud");
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  await expect(cloudSignUp("a@b.test", "short")).rejects.toThrow("10");
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("SMTP non autorizzato non viene mascherato come successo", async () => {
+  const { cloudSignUp } = await import("./cloud");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ code: "email_address_not_authorized" }), {
+          status: 400,
+        }),
+      ),
+  );
+  await expect(cloudSignUp("a@b.test", "not-a-real-password")).rejects.toThrow(
+    "servizio email",
+  );
+  expect(cloudActive()).toBe(false);
+});
+it("limiti di invio email ricevono un messaggio comprensibile", async () => {
+  const { cloudResendConfirmation } = await import("./cloud");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response("{}", { status: 429 })),
+  );
+  await expect(cloudResendConfirmation("a@b.test")).rejects.toThrow("Attendi");
+});
+it("reinvia solo conferma signup, senza password o token privilegiati", async () => {
+  const { cloudResendConfirmation } = await import("./cloud");
+  const fetch = vi.fn().mockResolvedValue(new Response("{}"));
+  vi.stubGlobal("fetch", fetch);
+  await cloudResendConfirmation("a@b.test");
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    type: "signup",
+    email: "a@b.test",
+  });
+  expect(fetch.mock.calls[0][1].headers.apikey).toMatch(/^sb_publishable_/);
+});
