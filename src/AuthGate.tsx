@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  cloudRequestRecovery,
   cloudOpen,
   cloudLogout,
   cloudSignUp,
@@ -17,6 +18,7 @@ export default function AuthGate({
 }) {
   const [view, setView] = useState<"signin" | "signup">("signin"),
     [busy, setBusy] = useState(false),
+    [emailWait, setEmailWait] = useState(0),
     [error, setError] = useState(""),
     [email, setEmail] = useState(""),
     [pending, setPending] = useState(false),
@@ -34,6 +36,22 @@ export default function AuthGate({
       live.current = false;
     };
   }, []);
+  const emailDeadline = useRef(0);
+  function startEmailWait() {
+    emailDeadline.current = Date.now() + 60000;
+    setEmailWait(60);
+  }
+  useEffect(() => {
+    if (!emailWait) return;
+    const timer = window.setInterval(
+      () =>
+        setEmailWait(
+          Math.max(0, Math.ceil((emailDeadline.current - Date.now()) / 1000)),
+        ),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [emailWait > 0]);
   function change(next: "signin" | "signup") {
     setView(next);
     setPending(false);
@@ -99,6 +117,7 @@ export default function AuthGate({
             setMessage("");
             try {
               if (view === "signup") {
+                startEmailWait();
                 await cloudSignUp(email, password);
                 if (live.current) {
                   setPending(true);
@@ -165,7 +184,11 @@ export default function AuthGate({
               />
             </label>
           )}
-          <button className="primary" type="submit" disabled={busy}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={busy || (view === "signup" && emailWait > 0)}
+          >
             {busy
               ? view === "signup"
                 ? "Registrazione in corso…"
@@ -175,6 +198,38 @@ export default function AuthGate({
                 : "Accedi"}
           </button>
         </form>
+      )}
+      {view === "signin" && (
+        <button
+          type="button"
+          className="text-button"
+          disabled={busy || emailWait > 0 || !/^\S+@\S+\.\S+$/.test(email)}
+          onClick={async () => {
+            setBusy(true);
+            setError("");
+            setMessage("");
+            try {
+              setEmailWait(60);
+              await cloudRequestRecovery(email);
+              if (live.current)
+                setMessage(
+                  "Se l’account esiste, riceverai il link per scegliere una nuova password. Il servizio email ha i limiti del team Supabase: evita richieste ripetute.",
+                );
+            } catch (err) {
+              if (live.current) setError(explain(err));
+            } finally {
+              if (live.current) setBusy(false);
+            }
+          }}
+        >
+          Password dimenticata?
+        </button>
+      )}
+      {emailWait > 0 && (
+        <p className="auth-help">
+          Nuovo invio email disponibile tra {emailWait} secondi. Il limite
+          orario Supabase resta valido.
+        </p>
       )}
       {message && <p role="status">{message}</p>}
       {error && (
@@ -187,11 +242,12 @@ export default function AuthGate({
           <button
             type="button"
             className="text-button"
-            disabled={busy || !/^\S+@\S+\.\S+$/.test(email)}
+            disabled={busy || emailWait > 0 || !/^\S+@\S+\.\S+$/.test(email)}
             onClick={async () => {
               setBusy(true);
               setError("");
               try {
+                startEmailWait();
                 await cloudResendConfirmation(email);
                 if (live.current)
                   setMessage(
