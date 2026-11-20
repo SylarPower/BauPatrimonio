@@ -47,7 +47,10 @@ test("build PWA offline dopo prima visita, cache solo statica", async ({
   expect(
     cached.some(
       (p) =>
-        p.includes("supabase") || p.includes("/api/") || p.includes("/rest/"),
+        p.includes("supabase") ||
+        p.includes("googleapis.com") ||
+        p.includes("/api/") ||
+        p.includes("/rest/"),
     ),
   ).toBe(false);
 });

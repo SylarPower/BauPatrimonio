@@ -4,15 +4,23 @@ export function takeRecoveryToken() {
   recoveryToken = null;
   return token;
 }
-/** Conferma: elimina token e chiede login. Recupero: token solo in memoria,
- * verificato da Auth prima del cambio password, mai sessione dell'archivio. */
+/** Codici azione Firebase solo in memoria e mai sessioni del patrimonio.
+ * Gli eventuali token dei vecchi link Supabase sono rimossi e non importati. */
 export function consumeAuthReturn(
   location: Pick<Location, "href">,
   replace: (url: string) => void,
-): "signin" | "expired" | "recovery" | null {
+): "signin" | "expired" | "recovery" | "verify" | null {
+  recoveryToken = null;
   const url = new URL(location.href),
     hash = new URLSearchParams(url.hash.slice(1));
+  const firebaseCode = url.searchParams.get("oobCode");
+  const firebaseMode = url.searchParams.get("mode");
   const keys = [
+    "oobCode",
+    "mode",
+    "apiKey",
+    "continueUrl",
+    "lang",
     "access_token",
     "refresh_token",
     "expires_in",
@@ -34,10 +42,17 @@ export function consumeAuthReturn(
     url.searchParams.has("error") ||
     url.searchParams.has("error_code");
   const recovery =
-    !expired && hash.get("type") === "recovery" && !!hash.get("access_token");
-  if (recovery) recoveryToken = hash.get("access_token");
+    !expired && firebaseMode === "resetPassword" && !!firebaseCode;
+  const verify = !expired && firebaseMode === "verifyEmail" && !!firebaseCode;
+  if (recovery || verify) recoveryToken = firebaseCode;
   url.hash = "";
   for (const key of keys) url.searchParams.delete(key);
   replace(url.pathname + url.search);
-  return expired ? "expired" : recovery ? "recovery" : "signin";
+  return expired
+    ? "expired"
+    : recovery
+      ? "recovery"
+      : verify
+        ? "verify"
+        : "signin";
 }

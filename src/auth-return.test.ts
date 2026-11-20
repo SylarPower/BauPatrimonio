@@ -51,12 +51,37 @@ it("un link recovery apre cambio password, non login o archivio", async () => {
   expect(
     consumeAuthReturn(
       {
-        href: "https://example.test/#access_token=test-only&refresh_token=discard&type=recovery",
+        href: "https://example.test/?mode=resetPassword&oobCode=test-only",
       },
       replace,
     ),
   ).toBe("recovery");
   expect(replace).toHaveBeenCalledWith("/");
   expect(takeRecoveryToken()).toBe("test-only");
+  expect(takeRecoveryToken()).toBeNull();
+});
+
+it("conferma Firebase mantiene solo il codice azione e pulisce query", async () => {
+  const { takeRecoveryToken } = await import("./auth-return");
+  const replace = vi.fn();
+  expect(
+    consumeAuthReturn(
+      {
+        href: "https://example.test/BauPatrimonio/?mode=verifyEmail&oobCode=test-code&apiKey=public&continueUrl=https%3A%2F%2Fevil.test",
+      },
+      replace,
+    ),
+  ).toBe("verify");
+  expect(replace).toHaveBeenCalledWith("/BauPatrimonio/");
+  expect(takeRecoveryToken()).toBe("test-code");
+});
+it("vecchi token recovery Supabase non diventano codici Firebase", async () => {
+  const { takeRecoveryToken } = await import("./auth-return");
+  expect(
+    consumeAuthReturn(
+      { href: "https://example.test/#access_token=old&type=recovery" },
+      vi.fn(),
+    ),
+  ).toBe("signin");
   expect(takeRecoveryToken()).toBeNull();
 });

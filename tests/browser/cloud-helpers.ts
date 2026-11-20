@@ -6,34 +6,63 @@ export async function mockCloud(page: Page) {
     reads = 0,
     writes = 0,
     fail = false;
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, async (route) => {
-    const r = route.request(),
-      path = new URL(r.url()).pathname;
-    if (path === "/auth/v1/token")
-      return route.fulfill({
-        json: {
-          access_token: "test-token",
-          refresh_token: "test-refresh",
-          expires_in: 3600,
-        },
-      });
-    if (path === "/rest/v1/vaults") {
-      reads++;
-      return route.fulfill({ json: document ? [{ document, revision }] : [] });
-    }
-    if (path === "/rest/v1/rpc/save_vault") {
-      writes++;
-      if (fail)
-        return route.fulfill({ status: 400, json: { message: "conflict" } });
-      const b = r.postDataJSON();
-      if (b.p_expected_revision !== revision)
-        return route.fulfill({ status: 400, json: { message: "conflict" } });
-      document = b.p_document;
-      revision++;
-      return route.fulfill({ json: revision });
-    }
-    return route.abort();
-  });
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore|securetoken)\.googleapis\.com\//,
+    async (route) => {
+      const r = route.request(),
+        path = new URL(r.url()).pathname;
+      if (path.endsWith("accounts:signInWithPassword"))
+        return route.fulfill({
+          json: {
+            idToken: "test-token",
+            refreshToken: "test-refresh",
+            localId: "test-uid",
+            expiresIn: "3600",
+          },
+        });
+      if (path.endsWith("accounts:lookup"))
+        return route.fulfill({
+          json: { users: [{ localId: "test-uid", emailVerified: true }] },
+        });
+      if (path.endsWith("/vaults/test-uid")) {
+        reads++;
+        return document
+          ? route.fulfill({
+              json: {
+                fields: {
+                  payload: { stringValue: JSON.stringify(document) },
+                  revision: { integerValue: String(revision) },
+                },
+                updateTime: "revision-" + revision,
+              },
+            })
+          : route.fulfill({
+              status: 404,
+              json: { error: { status: "NOT_FOUND" } },
+            });
+      }
+      if (path.endsWith("documents:commit")) {
+        writes++;
+        const write = r.postDataJSON().writes[0];
+        if (
+          fail ||
+          (document
+            ? write.currentDocument.updateTime !== "revision-" + revision
+            : write.currentDocument.exists !== false)
+        )
+          return route.fulfill({
+            status: 409,
+            json: { error: { status: "FAILED_PRECONDITION" } },
+          });
+        document = JSON.parse(write.update.fields.payload.stringValue);
+        revision++;
+        return route.fulfill({
+          json: { writeResults: [{ updateTime: "revision-" + revision }] },
+        });
+      }
+      return route.abort();
+    },
+  );
   return {
     get document() {
       return document;

@@ -69,7 +69,7 @@
   <h1>Il tuo patrimonio, senza abbonamenti.</h1>
   <p>
     Guida pratica dell’app gratuita accessibile dal web. Il patrimonio personale
-    viene salvato online su Supabase, protetto dal tuo account. La demo è
+    viene salvato online su Firebase, protetto dal tuo account. La demo è
     separata e non viene caricata nel tuo archivio.
   </p>
   <aside>
@@ -95,14 +95,14 @@
     <li>
       Salva il sito nei preferiti. GitHub Pages distribuisce l’app; i tuoi
       importi non vengono salvati nel repository. Per l’archivio online segui la
-      sezione Supabase più sotto.
+      sezione archivio online più sotto.
     </li>
   </ol>
   <p>
-    <strong>Registrazione limitata:</strong> come su BauSplit, viene usato il
-    mittente integrato Supabase: può inviare solo agli indirizzi autorizzati del
-    team, con un limite di 2 email all’ora per progetto. Gli altri indirizzi non
-    possono completare la conferma. Non è richiesto alcun servizio a pagamento.
+    <strong>Nuovi account Firebase:</strong> gli account della precedente
+    versione Supabase non sono trasferiti automaticamente. Crea un account
+    Firebase e conferma l’email prima di accedere. Nessun dato precedente viene
+    cancellato; puoi importare esplicitamente un tuo backup dal Profilo.
   </p>
   <h2>2. Installazione facoltativa sul telefono</h2>
   <ol>
@@ -234,11 +234,10 @@
     Il tuo patrimonio online: solo accesso, nessuna configurazione
   </h2>
   <p>
-    Il progetto Supabase di BauPatrimonio è già configurato. Sono stati
-    verificati schema dell’archivio, Row Level Security e funzione di
-    salvataggio; l’URL del sito Auth è impostato su GitHub Pages. Le
-    registrazioni pubbliche sono disabilitate: si usa l’utente personale già
-    creato.
+    L’archivio usa Firebase Authentication e Cloud Firestore. Ogni account con
+    email confermata può leggere e aggiornare soltanto il proprio documento.
+    Prima della pubblicazione il gestore deve attivare Email/Password,
+    autorizzare il dominio e pubblicare le regole Firestore del progetto.
   </p>
   <ol>
     <li>Apri l’app e scegli <strong>Accedi o crea account</strong>.</li>
@@ -292,13 +291,13 @@
   </p>
   <h3>Se l’accesso non riesce</h3>
   <p>
-    Verifica connessione, email e password dell’utente dell’app. Se hai
-    dimenticato la password, il proprietario del progetto può gestire il
-    recupero dalla dashboard Supabase → Authentication → Users. Non inviare
-    password o chiavi in chat. Il piano Free può sospendere progetti inattivi:
-    il proprietario può riattivarli dalla dashboard. Non acquistare upgrade o
-    add-on;
-    <a href="https://supabase.com/pricing">limiti ufficiali del piano</a>.
+    Usa email e password del nuovo account Firebase BauPatrimonio, non quelle
+    della console o del vecchio account Supabase. “Password dimenticata?” invia
+    il link di recupero. Apri il link e scegli la nuova password nel gestore
+    Firebase, poi torna al sito. Per il reinvio della conferma servono email e
+    password. Gli invii hanno quote anti-abuso: non ripetere le richieste. Se
+    compare “Accesso Firestore negato”, il gestore deve verificare le regole di
+    sicurezza, non renderle pubbliche. Non condividere password o link email.
   </p>
   <p>
     Questa modalità non recupera né carica automaticamente archivi personali
@@ -310,10 +309,10 @@
   <p>
     La configurazione tecnica è già inclusa nell’app: non devi eseguire SQL,
     inserire chiavi o premere «Apri cloud». La chiave pubblica identifica il
-    progetto, ma non autorizza l’accesso ai dati: sono autenticazione e RLS a
-    proteggerli. Non è cifratura end-to-end: il proprietario del progetto
-    conserva i poteri amministrativi sul database. Nessun connettore Fideuram è
-    attivato da questa procedura.
+    progetto, ma non autorizza l’accesso ai dati: sono autenticazione e regole
+    Firestore a proteggerli. Non è cifratura end-to-end: il proprietario del
+    progetto conserva i poteri amministrativi sul database. Nessun connettore
+    Fideuram è attivato da questa procedura.
   </p>
   <h2>Grafici del solo portafoglio e rendimento</h2>
   <p>
@@ -362,7 +361,7 @@
   <p>
     <strong>GitHub Pages da solo non è un backend bancario.</strong> Per
     automatizzare l’accesso servirebbe un servizio server riservato aggiuntivo.
-    Non è stato attivato. L’archivio Supabase descritto sopra salva i tuoi dati,
+    Non è stato attivato. L’archivio Firebase descritto sopra salva i tuoi dati,
     ma non implementa ancora il connettore bancario. Le posizioni titoli, ETF e
     previdenza non risultano coperte dalle API AIS consultate. Restano
     disponibili subito manuale e CSV. Il dettaglio di fonti e limiti è nella
@@ -377,8 +376,8 @@
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
     stati acquistati abbonamenti o collegati conti bancari reali. La
-    configurazione Auth del progetto Supabase esistente è stata completata
-    dall’agente. GitHub Pages risulta attivo sulla cartella docs del branch
-    corrente.
+    configurazione pubblica Firebase è inclusa nel codice; le impostazioni
+    amministrative e le regole richiedono verifica nella console. Il sito viene
+    distribuito da GitHub Pages.
   </footer>
 </html>

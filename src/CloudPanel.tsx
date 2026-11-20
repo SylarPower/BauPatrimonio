@@ -4,7 +4,7 @@ export default function CloudPanel({ personal }: { personal: boolean }) {
       <h3>{personal ? "Archivio online privato" : "Demo separata"}</h3>
       <p>
         {personal
-          ? "Il tuo account è collegato a Supabase. Il caricamento avviene all’accesso e le modifiche vengono salvate automaticamente online. Lo stato del salvataggio è sempre visibile nella pagina."
+          ? "Il tuo account è collegato a Firebase. Il caricamento avviene all’accesso e le modifiche vengono salvate automaticamente online. Lo stato del salvataggio è sempre visibile nella pagina."
           : "I dati di esempio restano sul dispositivo: non vengono caricati nel tuo account."}
       </p>
       <p>

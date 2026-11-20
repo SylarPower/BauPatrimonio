@@ -1,281 +1,256 @@
 import { it, expect, vi, afterEach } from "vitest";
 import {
   cloudLogin,
+  cloudOpen,
   cloudRead,
   cloudSave,
-  cloudActive,
   cloudLogout,
+  cloudActive,
   cloudUseLoaded,
-  validateCloudConfig,
+  cloudSignUp,
+  cloudResendConfirmation,
+  cloudResetPassword,
+  cloudRequestRecovery,
+  cloudConfirmEmail,
 } from "./cloud";
 import { empty } from "./model";
-const c = {
-  url: "https://testproject.supabase.co",
-  key: "sb_publishable_test",
+const login = {
+  idToken: "test-token",
+  refreshToken: "test-refresh",
+  localId: "test-uid",
+  expiresIn: "3600",
 };
+const user = { users: [{ emailVerified: true, localId: "test-uid" }] };
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status });
+const saved = (revision = 1) => ({
+  fields: {
+    payload: { stringValue: JSON.stringify(empty()) },
+    revision: { integerValue: String(revision) },
+  },
+  updateTime: "rev-" + revision,
+});
+const commit = (r = 1) => ({ writeResults: [{ updateTime: "rev-" + r }] });
+function mock(...responses: Response[]) {
+  const f = vi.fn();
+  for (const r of responses) f.mockResolvedValueOnce(r);
+  vi.stubGlobal("fetch", f);
+  return f;
+}
 afterEach(() => {
   cloudLogout();
   vi.unstubAllGlobals();
 });
-it("rifiuta domini non Supabase, URL HTTP e chiavi privilegiate", () => {
-  expect(() =>
-    validateCloudConfig({ ...c, url: "http://testproject.supabase.co" }),
-  ).toThrow();
-  expect(() =>
-    validateCloudConfig({ ...c, url: "https://supabase.co.evil.test" }),
-  ).toThrow();
-  expect(() => validateCloudConfig({ ...c, key: "sb_secret_no" })).toThrow();
-  expect(() => validateCloudConfig(c)).not.toThrow();
+it("accesso verificato legge solo documento UID e non scrive se esiste", async () => {
+  const f = mock(json(login), json(user), json(saved()));
+  expect(await cloudOpen(" a@b.test ", "test-password")).toEqual(empty());
+  expect(cloudActive()).toBe(true);
+  expect(f.mock.calls[2][0]).toContain("/vaults/test-uid");
+  expect(JSON.parse(f.mock.calls[0][1].body).email).toBe("a@b.test");
+  expect(f.mock.calls.every((x) => x[1].cache === "no-store")).toBe(true);
 });
-it("login non invia dati; apertura e salvataggi usano revisioni e no-store", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-    )
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify([{ document: empty(), revision: 2 }])),
-    )
-    .mockResolvedValueOnce(new Response("3"))
-    .mockResolvedValueOnce(new Response("4"));
-  vi.stubGlobal("fetch", fetch);
-  await cloudLogin(c, "user@example.test", "secret");
-  expect(cloudActive()).toBe(false);
-  await cloudRead();
-  cloudUseLoaded();
-  await Promise.all([cloudSave(empty()), cloudSave(empty())]);
-  expect(JSON.parse(fetch.mock.calls[2][1].body).p_expected_revision).toBe(2);
-  expect(JSON.parse(fetch.mock.calls[3][1].body).p_expected_revision).toBe(3);
-  expect(fetch.mock.calls.every((x) => x[1].cache === "no-store")).toBe(true);
-});
-it("un conflitto blocca i salvataggi successivi senza sovrascrivere", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-    )
-    .mockResolvedValueOnce(new Response("[]"))
-    .mockResolvedValueOnce(new Response("{}", { status: 400 }));
-  vi.stubGlobal("fetch", fetch);
-  await cloudLogin(c, "a", "b");
-  await cloudRead();
-  await expect(cloudSave(empty(), true)).rejects.toThrow();
-  expect(cloudActive()).toBe(false);
-  await expect(cloudSave(empty())).rejects.toThrow();
-  expect(fetch).toHaveBeenCalledTimes(3);
-});
-it("documento remoto non valido non viene aperto", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([{ document: {}, revision: 1 }])),
-      ),
+it("email non verificata non legge Firestore", async () => {
+  const f = mock(
+    json(login),
+    json({ users: [{ localId: "test-uid", emailVerified: false }] }),
   );
-  await cloudLogin(c, "a", "b");
-  await expect(cloudRead()).rejects.toThrow();
+  await expect(cloudOpen("a", "b")).rejects.toThrow("non ancora confermato");
+  expect(f).toHaveBeenCalledTimes(2);
   expect(cloudActive()).toBe(false);
 });
-
-it("nessun salvataggio personale silenzioso senza sessione", async () => {
+it("primo accesso crea vuoto con precondizione exists false", async () => {
+  const f = mock(json(login), json(user), json({}, 404), json(commit()));
+  expect((await cloudOpen("a", "b")).assets).toEqual([]);
+  const write = JSON.parse(f.mock.calls[3][1].body).writes[0];
+  expect(write.currentDocument).toEqual({ exists: false });
+  expect(write.update.fields.revision.integerValue).toBe("1");
+});
+it("coda salva con updateTime atomico e revisioni crescenti", async () => {
+  const f = mock(
+    json(login),
+    json(user),
+    json(saved(5)),
+    json(commit(6)),
+    json(commit(7)),
+  );
+  await cloudOpen("a", "b");
+  await Promise.all([cloudSave(empty()), cloudSave(empty())]);
+  const a = JSON.parse(f.mock.calls[3][1].body).writes[0],
+    b = JSON.parse(f.mock.calls[4][1].body).writes[0];
+  expect(a.currentDocument).toEqual({ updateTime: "rev-5" });
+  expect(b.currentDocument).toEqual({ updateTime: "rev-6" });
+  expect(b.update.fields.revision.integerValue).toBe("7");
+});
+it("conflitto blocca scritture successive", async () => {
+  const f = mock(
+    json(login),
+    json(user),
+    json(saved()),
+    json({ error: { status: "FAILED_PRECONDITION" } }, 409),
+  );
+  await cloudOpen("a", "b");
+  await expect(cloudSave(empty())).rejects.toThrow("Conflitto");
+  await expect(cloudSave(empty())).rejects.toThrow("interrotto");
+  expect(f).toHaveBeenCalledTimes(4);
+  expect(cloudActive()).toBe(false);
+});
+it("permission denied non crea archivio sostitutivo", async () => {
+  const f = mock(
+    json(login),
+    json(user),
+    json({ error: { status: "PERMISSION_DENIED" } }, 403),
+  );
+  await expect(cloudOpen("a", "b")).rejects.toThrow("regole");
+  expect(f).toHaveBeenCalledTimes(3);
+  expect(cloudActive()).toBe(false);
+});
+it("documento corrotto non apre sessione pronta", async () => {
+  mock(
+    json(login),
+    json(user),
+    json({ fields: { payload: { stringValue: "{}" } } }),
+  );
+  await expect(cloudOpen("a", "b")).rejects.toThrow("non valido");
+  expect(cloudActive()).toBe(false);
+});
+it("logout durante login ignora risposta tardiva", async () => {
+  let resolve!: (r: Response) => void;
+  const f = vi
+    .fn()
+    .mockImplementationOnce(() => new Promise<Response>((r) => (resolve = r)))
+    .mockResolvedValueOnce(json(user));
+  vi.stubGlobal("fetch", f);
+  const pending = cloudLogin("a", "b");
+  cloudLogout();
+  resolve(json(login));
+  await expect(pending).rejects.toThrow("annullato");
+  expect(cloudActive()).toBe(false);
+});
+it("nessun salvataggio senza accesso", async () => {
   await expect(cloudSave(empty())).rejects.toThrow("Accesso richiesto");
 });
-it("apertura automatica di archivio esistente senza scritture", async () => {
-  const { cloudOpen } = await import("./cloud");
+it("rinnovo token solo in memoria", async () => {
+  const f = mock(
+    json({ ...login, expiresIn: "0" }),
+    json(user),
+    json({
+      id_token: "new-token",
+      refresh_token: "new-refresh",
+      expires_in: "3600",
+    }),
+    json(saved()),
+  );
+  await cloudLogin("a", "b");
+  await cloudRead();
+  cloudUseLoaded();
+  expect(f.mock.calls[2][0]).toContain("securetoken.googleapis.com");
+  expect(f.mock.calls[3][1].headers.Authorization).toBe("Bearer new-token");
+});
+it("signup invia conferma Firebase e non apre archivio", async () => {
+  const f = mock(json(login), json({}));
+  await cloudSignUp("new@test.it", "test-password");
+  expect(f.mock.calls[0][0]).toContain("accounts:signUp");
+  expect(JSON.parse(f.mock.calls[1][1].body)).toMatchObject({
+    requestType: "VERIFY_EMAIL",
+    idToken: "test-token",
+  });
+  expect(cloudActive()).toBe(false);
+});
+it("fallimento email dopo signup non dichiara inviata", async () => {
+  mock(json(login), json({ error: { message: "QUOTA_EXCEEDED" } }, 429));
+  await expect(cloudSignUp("a", "test-password")).rejects.toThrow(
+    "Account creato, ma invio email",
+  );
+  expect(cloudActive()).toBe(false);
+});
+it("password debole non viene inviata", async () => {
+  const f = mock();
+  await expect(cloudSignUp("a", "short")).rejects.toThrow("10");
+  expect(f).not.toHaveBeenCalled();
+});
+it("reinvio richiede credenziali ma non crea sessione vault", async () => {
+  const f = mock(json(login), json({}));
+  await cloudResendConfirmation("a", "test-password");
+  expect(f.mock.calls[0][0]).toContain("signInWithPassword");
+  expect(cloudActive()).toBe(false);
+});
+it("recupero invia reset Firebase senza password o accesso vault", async () => {
+  const f = mock(json({}));
+  await cloudRequestRecovery(" a@b.it ");
+  expect(JSON.parse(f.mock.calls[0][1].body)).toMatchObject({
+    requestType: "PASSWORD_RESET",
+    email: "a@b.it",
+  });
+});
+it("cambio password usa codice monouso, mai bearer vault", async () => {
+  const f = mock(json({}));
+  await cloudResetPassword("test-code", "test-password");
+  expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({
+    oobCode: "test-code",
+    newPassword: "test-password",
+  });
+  expect(f).toHaveBeenCalledTimes(1);
+  expect(cloudActive()).toBe(false);
+});
+it("codice scaduto non è successo", async () => {
+  mock(json({ error: { message: "EXPIRED_OOB_CODE" } }, 400));
+  await expect(
+    cloudResetPassword("test-code", "test-password"),
+  ).rejects.toThrow("scaduto");
+});
+it("conferma email non apre vault", async () => {
+  const f = mock(json({}));
+  await cloudConfirmEmail("test-code");
+  expect(f.mock.calls[0][0]).toContain("accounts:update");
+  expect(cloudActive()).toBe(false);
+});
+it("credenziali errate e quota hanno messaggi distinti", async () => {
+  for (const [message, status, expected] of [
+    ["INVALID_LOGIN_CREDENTIALS", 400, "non corrette"],
+    ["TOO_MANY_ATTEMPTS_TRY_LATER", 429, "Troppe richieste"],
+  ] as const) {
+    mock(json({ error: { message } }, status));
+    await expect(cloudLogin("a", "b")).rejects.toThrow(expected);
+  }
+});
+
+it("UID incoerente nella risposta Auth non apre sessione", async () => {
+  const f = mock(
+    json(login),
+    json({ users: [{ localId: "other-user", emailVerified: true }] }),
+  );
+  await expect(cloudOpen("a", "b")).rejects.toThrow("non valida");
+  expect(f).toHaveBeenCalledTimes(2);
+  expect(cloudActive()).toBe(false);
+});
+it("archivio troppo grande rifiutato prima della scrittura", async () => {
+  const f = mock(json(login), json(user), json(saved()));
+  await cloudOpen("a", "b");
   const s = empty();
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-    )
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify([{ document: s, revision: 5 }])),
-    );
-  vi.stubGlobal("fetch", fetch);
-  expect(await cloudOpen("a", "b")).toEqual(s);
-  expect(cloudActive()).toBe(true);
-  expect(fetch).toHaveBeenCalledTimes(2);
+  s.imports = Array.from({ length: 4000 }, (_, i) => ({
+    id: String(i),
+    name: "x".repeat(250),
+    date: "2026-11-19",
+    rows: 1,
+    kind: "csv",
+  }));
+  await expect(cloudSave(s)).rejects.toThrow("troppo grande");
+  expect(f).toHaveBeenCalledTimes(3);
 });
-it("primo accesso crea solo un documento vuoto, mai dati della demo", async () => {
-  const { cloudOpen } = await import("./cloud");
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-    )
-    .mockResolvedValueOnce(new Response("[]"))
-    .mockResolvedValueOnce(new Response("1"));
-  vi.stubGlobal("fetch", fetch);
-  expect((await cloudOpen("a", "b")).assets).toEqual([]);
-  expect(JSON.parse(fetch.mock.calls[2][1].body).p_expected_revision).toBe(0);
-});
-it("logout ignora risposte tardive senza riaprire la sessione", async () => {
+it("logout durante lettura ignora risposta", async () => {
+  await (async () => {
+    mock(json(login), json(user));
+    await cloudLogin("a", "b");
+  })();
   let resolve!: (r: Response) => void;
   vi.stubGlobal(
     "fetch",
     vi.fn(() => new Promise<Response>((r) => (resolve = r))),
   );
-  const pending = cloudLogin(c, "a", "b");
+  const work = cloudRead();
+  await Promise.resolve();
   cloudLogout();
-  resolve(
-    new Response(JSON.stringify({ access_token: "late", expires_in: 3600 })),
-  );
-  await expect(pending).rejects.toThrow("annullato");
+  resolve(json(saved()));
+  await expect(work).rejects.toThrow("Sessione terminata");
   expect(cloudActive()).toBe(false);
-});
-it("rinnova in memoria una sessione scaduta prima di leggere", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          access_token: "t",
-          refresh_token: "refresh",
-          expires_in: 0,
-        }),
-      ),
-    )
-    .mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          access_token: "new",
-          refresh_token: "new-refresh",
-          expires_in: 3600,
-        }),
-      ),
-    )
-    .mockResolvedValueOnce(new Response("[]"));
-  vi.stubGlobal("fetch", fetch);
-  await cloudLogin(c, "a", "b");
-  await cloudRead();
-  expect(fetch.mock.calls[1][0]).toContain("grant_type=refresh_token");
-  expect(fetch.mock.calls[2][1].headers.Authorization).toBe("Bearer new");
-});
-it("un errore nel caricamento automatico non crea un archivio sostitutivo", async () => {
-  const { cloudOpen } = await import("./cloud");
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify({ access_token: "t", expires_in: 3600 })),
-    )
-    .mockRejectedValueOnce(new TypeError("offline"));
-  vi.stubGlobal("fetch", fetch);
-  await expect(cloudOpen("a", "b")).rejects.toThrow();
-  expect(fetch).toHaveBeenCalledTimes(2);
-  expect(cloudActive()).toBe(false);
-});
-
-it("registrazione usa solo endpoint pubblico, redirect fisso e non inizializza archivi", async () => {
-  const { cloudSignUp, authRedirectUrl } = await import("./cloud");
-  const fetch = vi.fn().mockResolvedValue(new Response("{}"));
-  vi.stubGlobal("fetch", fetch);
-  await cloudSignUp(" new@example.test ", "not-a-real-password");
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.calls[0][0]).toContain(
-    "/auth/v1/signup?redirect_to=" + encodeURIComponent(authRedirectUrl),
-  );
-  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
-    email: "new@example.test",
-    password: "not-a-real-password",
-  });
-  expect(fetch.mock.calls[0][1].cache).toBe("no-store");
-  expect(cloudActive()).toBe(false);
-});
-it("password debole non viene inviata", async () => {
-  const { cloudSignUp } = await import("./cloud");
-  const fetch = vi.fn();
-  vi.stubGlobal("fetch", fetch);
-  await expect(cloudSignUp("a@b.test", "short")).rejects.toThrow("10");
-  expect(fetch).not.toHaveBeenCalled();
-});
-it("SMTP non autorizzato non viene mascherato come successo", async () => {
-  const { cloudSignUp } = await import("./cloud");
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ code: "email_address_not_authorized" }), {
-        status: 400,
-      }),
-    ),
-  );
-  await expect(cloudSignUp("a@b.test", "not-a-real-password")).rejects.toThrow(
-    "servizio email",
-  );
-  expect(cloudActive()).toBe(false);
-});
-it("limiti di invio email ricevono un messaggio comprensibile", async () => {
-  const { cloudResendConfirmation } = await import("./cloud");
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(new Response("{}", { status: 429 })),
-  );
-  await expect(cloudResendConfirmation("a@b.test")).rejects.toThrow("Attendi");
-});
-it("reinvia solo conferma signup, senza password o token privilegiati", async () => {
-  const { cloudResendConfirmation } = await import("./cloud");
-  const fetch = vi.fn().mockResolvedValue(new Response("{}"));
-  vi.stubGlobal("fetch", fetch);
-  await cloudResendConfirmation("a@b.test");
-  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
-    type: "signup",
-    email: "a@b.test",
-  });
-  expect(fetch.mock.calls[0][1].headers.apikey).toMatch(/^sb_publishable_/);
-});
-
-it("distingue credenziali errate, conferma e limite senza esporre dettagli remoti", async () => {
-  for (const [status, code, expected] of [
-    [400, "invalid_credentials", "non corrette"],
-    [400, "email_not_confirmed", "non ancora confermato"],
-    [429, "over_request_rate_limit", "Troppi tentativi"],
-  ] as const) {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({ code, message: "private server detail" }),
-            { status },
-          ),
-        ),
-    );
-    await expect(cloudLogin(c, " user@example.test ", "wrong")).rejects.toThrow(
-      expected,
-    );
-    expect(cloudActive()).toBe(false);
-  }
-});
-it("recupero valida il bearer prima di aggiornare password, senza aprire archivi", async () => {
-  const { cloudResetPassword } = await import("./cloud");
-  const fetch = vi
-    .fn()
-    .mockResolvedValueOnce(new Response("{}"))
-    .mockResolvedValueOnce(new Response("{}"))
-    .mockResolvedValueOnce(new Response(null, { status: 204 }));
-  vi.stubGlobal("fetch", fetch);
-  await cloudResetPassword("test-only", "new-test-password");
-  expect(fetch.mock.calls.map((x) => new URL(x[0]).pathname)).toEqual([
-    "/auth/v1/user",
-    "/auth/v1/user",
-    "/auth/v1/logout",
-  ]);
-  expect(fetch.mock.calls[1][1].method).toBe("PUT");
-  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
-    password: "new-test-password",
-  });
-  expect(cloudActive()).toBe(false);
-});
-it("recupero con token scaduto non aggiorna nulla", async () => {
-  const { cloudResetPassword } = await import("./cloud");
-  const fetch = vi.fn().mockResolvedValue(new Response("{}", { status: 401 }));
-  vi.stubGlobal("fetch", fetch);
-  await expect(
-    cloudResetPassword("expired", "new-test-password"),
-  ).rejects.toThrow("scaduto");
-  expect(fetch).toHaveBeenCalledTimes(1);
 });

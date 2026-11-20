@@ -23,19 +23,24 @@ test("creazione account richiede conferma, non apre archivi e consente reinvio",
   let signup = 0,
     resend = 0,
     reads = 0;
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/signup")) {
-      signup++;
-      return route.fulfill({ json: { user: { id: "test-only" } } });
-    }
-    if (path.endsWith("/resend")) {
-      resend++;
-      return route.fulfill({ json: {} });
-    }
-    reads++;
-    return route.abort();
-  });
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith("accounts:signUp")) {
+        signup++;
+        return route.fulfill({ json: { idToken: "test-only" } });
+      }
+      if (path.endsWith("accounts:sendOobCode")) {
+        resend++;
+        return route.fulfill({ json: {} });
+      }
+      if (path.endsWith("accounts:signInWithPassword"))
+        return route.fulfill({ json: { idToken: "test-only" } });
+      reads++;
+      return route.abort();
+    },
+  );
   await openSignup(page);
   await fillSignup(page);
   await page
@@ -46,6 +51,9 @@ test("creazione account richiede conferma, non apre archivi e consente reinvio",
   expect(signup).toBe(1);
   expect(reads).toBe(0);
   await expect(page.locator(".net-amount")).toHaveCount(0);
+  await page
+    .getByLabel("Password per reinviare la conferma")
+    .fill("not-a-real-password");
   await page.clock.install();
   await expect(
     page.getByRole("button", { name: "Invia di nuovo la conferma" }),
@@ -57,7 +65,7 @@ test("creazione account richiede conferma, non apre archivi e consente reinvio",
   await expect(page.getByRole("status")).toContainText(
     "riceverai una nuova email",
   );
-  expect(resend).toBe(1);
+  expect(resend).toBe(2);
   await page.getByRole("button", { name: "Vai ad Accedi" }).click();
   await expect(
     page
@@ -70,10 +78,13 @@ test("creazione account richiede conferma, non apre archivi e consente reinvio",
 });
 test("password diverse bloccano la richiesta", async ({ page }) => {
   let requests = 0;
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, (r) => {
-    requests++;
-    return r.abort();
-  });
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    (r) => {
+      requests++;
+      return r.abort();
+    },
+  );
   await openSignup(page);
   await fillSignup(page);
   await page.getByLabel("Conferma password").fill("different-password");
@@ -87,8 +98,13 @@ test("password diverse bloccano la richiesta", async ({ page }) => {
 test("un blocco email mostra errore, non una registrazione riuscita", async ({
   page,
 }) => {
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, (r) =>
-    r.fulfill({ status: 400, json: { code: "email_address_not_authorized" } }),
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    (r) =>
+      r.fulfill({
+        status: 400,
+        json: { error: { message: "QUOTA_EXCEEDED" } },
+      }),
   );
   await openSignup(page);
   await fillSignup(page);
@@ -96,7 +112,7 @@ test("un blocco email mostra errore, non una registrazione riuscita", async ({
     .locator(".auth-card form")
     .getByRole("button", { name: "Crea account", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toContainText("servizio email");
+  await expect(page.getByRole("alert")).toContainText("quota gratuita");
   await expect(page.getByRole("button", { name: "Vai ad Accedi" })).toHaveCount(
     0,
   );
@@ -141,15 +157,16 @@ test("recupero dal link email cambia password senza leggere patrimonio e pulisce
   page,
 }) => {
   const paths: string[] = [];
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, async (r) => {
-    const path = new URL(r.request().url()).pathname;
-    paths.push(path);
-    expect(path).toMatch(/^\/auth\/v1\/(user|logout)$/);
-    return r.fulfill({ json: {} });
-  });
-  await page.goto(
-    "/#access_token=test-only&refresh_token=discard&type=recovery",
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    async (r) => {
+      const path = new URL(r.request().url()).pathname;
+      paths.push(path);
+      expect(path).toBe("/v1/accounts:resetPassword");
+      return r.fulfill({ json: {} });
+    },
   );
+  await page.goto("/?mode=resetPassword&oobCode=test-only");
   await expect(
     page.getByRole("heading", { name: "Nuova password" }),
   ).toBeVisible();
@@ -162,7 +179,7 @@ test("recupero dal link email cambia password senza leggere patrimonio e pulisce
     .fill("new-test-password");
   await page.getByRole("button", { name: "Salva nuova password" }).click();
   await expect(page.getByRole("status")).toContainText("Password aggiornata");
-  expect(paths).toEqual(["/auth/v1/user", "/auth/v1/user", "/auth/v1/logout"]);
+  expect(paths).toEqual(["/v1/accounts:resetPassword"]);
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
     "test-only",
   );
@@ -171,8 +188,13 @@ test("recupero dal link email cambia password senza leggere patrimonio e pulisce
 test("errore login mostra causa comprensibile e non apre archivio", async ({
   page,
 }) => {
-  await page.route(/^https:\/\/[^/]+\.supabase\.co\//, (r) =>
-    r.fulfill({ status: 400, json: { code: "invalid_credentials" } }),
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    (r) =>
+      r.fulfill({
+        status: 400,
+        json: { error: { message: "INVALID_LOGIN_CREDENTIALS" } },
+      }),
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Accedi o crea account" }).click();
@@ -188,4 +210,62 @@ test("errore login mostra causa comprensibile e non apre archivio", async ({
     "Email o password non corrette",
   );
   await expect(page.locator(".net-amount")).toHaveCount(0);
+});
+
+test("conferma email Firebase usa codice monouso senza aprire archivio", async ({
+  page,
+}) => {
+  const paths: string[] = [];
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    (r) => {
+      paths.push(new URL(r.request().url()).pathname);
+      return r.fulfill({ json: {} });
+    },
+  );
+  await page.goto("/?mode=verifyEmail&oobCode=test-code&apiKey=public");
+  await expect(
+    page.getByRole("heading", { name: "Conferma email" }),
+  ).toBeVisible();
+  expect(page.url()).not.toContain("oobCode");
+  await page.getByRole("button", { name: "Conferma il mio indirizzo" }).click();
+  await expect(page.getByRole("status")).toContainText("Email confermata");
+  expect(paths).toEqual(["/v1/accounts:update"]);
+  await expect(page.locator(".net-amount")).toHaveCount(0);
+});
+test("login email non verificata non legge o crea documenti", async ({
+  page,
+}) => {
+  let firestoreRequests = 0;
+  await page.route(
+    /^https:\/\/(identitytoolkit|firestore)\.googleapis\.com\//,
+    (r) => {
+      const path = new URL(r.request().url()).pathname;
+      if (path.endsWith("accounts:signInWithPassword"))
+        return r.fulfill({
+          json: {
+            idToken: "test",
+            localId: "test-uid",
+            refreshToken: "refresh",
+            expiresIn: "3600",
+          },
+        });
+      if (path.endsWith("accounts:lookup"))
+        return r.fulfill({
+          json: { users: [{ localId: "test-uid", emailVerified: false }] },
+        });
+      firestoreRequests++;
+      return r.abort();
+    },
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Accedi o crea account" }).click();
+  await page.getByLabel("Email", { exact: true }).fill("test@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("test-password");
+  await page
+    .locator(".auth-card form")
+    .getByRole("button", { name: "Accedi", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("non ancora confermato");
+  expect(firestoreRequests).toBe(0);
 });
