@@ -200,8 +200,8 @@ export async function cloudOpen(email: string, password: string) {
   }
 }
 
-// Le registrazioni pubbliche devono essere abilitate nel progetto dopo aver
-// configurato SMTP. Nessun fallback a conferma automatica o chiavi privilegiate.
+// Signup abilitato con i limiti del mittente integrato, accettati dal gestore.
+// Nessun fallback a conferma automatica o chiavi privilegiate.
 export const authRedirectUrl = "https://sylarpower.github.io/BauPatrimonio/";
 async function authRegistrationRequest(
   path: string,
@@ -230,7 +230,7 @@ async function authRegistrationRequest(
     );
   if (code === "email_address_not_authorized")
     throw Error(
-      "Il servizio email non è ancora pronto per nuovi utenti. Riprova dopo l’attivazione del servizio da parte del gestore.",
+      "Il servizio email integrato è limitato agli indirizzi autorizzati del team Supabase. Questo indirizzo non può ricevere la conferma con la configurazione attuale.",
     );
   if (
     response.status === 429 ||

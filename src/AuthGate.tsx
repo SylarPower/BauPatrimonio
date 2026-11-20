@@ -73,6 +73,14 @@ export default function AuthGate({
           ? "Ritrova i tuoi dati online. Sul computer e sul telefono usa lo stesso account."
           : "Un account gratuito, un archivio privato. Conferma la tua email prima di accedere."}
       </p>
+      {view === "signup" && (
+        <p className="auth-help">
+          Registrazione limitata: il mittente integrato Supabase invia email
+          solo agli indirizzi autorizzati del team, con un limite di 2 email
+          all’ora per il progetto. Gli altri indirizzi non possono completare la
+          conferma.
+        </p>
+      )}
       {!pending && (
         <form
           key={view}

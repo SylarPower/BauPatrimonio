@@ -176,10 +176,10 @@ scripts/build-sw.mjs      precache statica con percorso e hash di contenuto
 supabase/                 schema archivio online, RLS e test isolamento
 ```
 
-### Registrazione pubblica — requisito prima del rilascio
+### Registrazione con il mittente integrato Supabase
 
 L’interfaccia offre **Accedi / Crea account**, conferma password, conferma email e reinvio del link. Il ritorno dalla mail rimuove i token dall’URL e richiede l’accesso con password: non importa sessioni dall’URL, non apre né crea un archivio fino all’accesso. Le risposte di registrazione non rivelano se un account esiste già.
 
-**Blocco attuale:** nel progetto dedicato le nuove registrazioni restano disabilitate e manca SMTP personalizzato. Il mittente predefinito Supabase è limitato agli indirizzi del team, quindi non basta per utenti pubblici. Prima del merge/rilascio: configurare un servizio email con piano gratuito e mittente verificato nel pannello Supabase (mai credenziali nel repository/chat), mantenere la conferma email, abilitare signup e provare con un indirizzo esterno al team: registrazione, consegna, conferma, accesso, reinvio e isolamento fra due account. I test browser usano risposte simulate, non certificano la consegna delle email.
+Il gestore ha accettato esplicitamente gli stessi limiti della configurazione BauSplit: signup abilitato, conferma email obbligatoria, nessun SMTP esterno e nessun costo aggiuntivo. Il mittente integrato invia solo agli indirizzi autorizzati del team Supabase e ha un limite di 2 email/ora per progetto. **Non è una registrazione aperta a qualsiasi visitatore**: gli altri indirizzi non possono completare la conferma. L’interfaccia mostra questa limitazione e gli errori di invio senza dichiarare un successo inesistente. Non è stata verificata la consegna reale delle email: i test browser usano risposte simulate.
 
-Controllare anche la sorgente GitHub Pages: deve pubblicare la versione approvata, non una vecchia branch. Nessuna modifica a SMTP o abilitazione delle registrazioni viene eseguita dal client.
+Per aprire in futuro la registrazione a tutti servirà un mittente SMTP verificato. Non disabilitare la conferma email per aggirare i limiti e non inserire credenziali nel repository o nella chat. La sorgente GitHub Pages prevista è `main` → `/docs`.
