@@ -9,9 +9,10 @@
     "test": "vitest run src",
     "preview": "vite preview --host 0.0.0.0",
     "test:e2e": "playwright test",
-    "test:db": "node tests/database.mjs",
+    "test:db": "node tests/firestore.mjs",
     "format": "prettier --write src tests scripts *.ts *.json public/sw.js README.md docs",
-    "prepare:pages": "node scripts/prepare-pages.mjs"
+    "prepare:pages": "node scripts/prepare-pages.mjs",
+    "test:db:legacy": "node tests/database.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.6",
@@ -24,12 +25,14 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.65.1",
     "@sparticuz/chromium": "^153.0.0",
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "firebase": "^12.19.0",
     "prettier": "^3.10.1",
     "typescript": "~5.7.2",
     "vite": "^6.4.6",

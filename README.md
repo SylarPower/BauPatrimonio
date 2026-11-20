@@ -4,9 +4,9 @@ Taccuino personale del patrimonio, in italiano: **quanto possiedo, quanto devo e
 
 ## Zero abbonamenti, nessun servizio obbligatorio
 
-Il patrimonio personale è **online-first**: accesso email/password, lettura automatica da Supabase e salvataggio automatico con revisioni atomiche. URL e chiave pubblica publishable sono configurati in `src/cloud-config.ts`; l’utente non deve copiarli, scegliere un archivio o attivare il cloud. Nessun analytics, font remoto, servizio a pagamento o chiave privilegiata nel client.
+Il patrimonio personale è **online-first**: accesso email/password, lettura automatica da Cloud Firestore e salvataggio automatico con revisioni atomiche. I parametri web pubblici Firebase sono configurati in `src/cloud-config.ts`; l’utente non deve copiarli, scegliere un archivio o attivare il cloud. Nessun analytics, font remoto, servizio a pagamento o chiave privilegiata nel client.
 
-La demo resta separata in IndexedDB e funziona offline. Il patrimonio personale corrente e la sessione Auth restano soltanto in memoria durante l’uso, mentre il documento persistente è nel database Supabase privato. Nessun nuovo archivio personale viene scritto in IndexedDB. A ogni ricaricamento occorre accedere: i token non sono persistiti. Gli archivi locali delle vecchie versioni non vengono cancellati né caricati automaticamente su un account.
+La demo resta separata in IndexedDB e funziona offline. Il patrimonio personale corrente e la sessione Auth restano soltanto in memoria durante l’uso, mentre il documento persistente è nel database Firestore privato. Nessun nuovo archivio personale viene scritto in IndexedDB. A ogni ricaricamento occorre accedere: i token non sono persistiti. Gli archivi locali delle vecchie versioni non vengono cancellati né caricati automaticamente su un account.
 
 **Computer e telefono:** accedi con lo stesso account e l’app carica il medesimo documento remoto. Non è sincronizzazione realtime: «Aggiorna dati online» rilegge i cambiamenti dell’altro dispositivo. Un conflitto blocca le scritture; un errore non viene mostrato come successo. Niente upgrade o acquisti effettuati.
 
@@ -14,11 +14,11 @@ La demo resta separata in IndexedDB e funziona offline. Il patrimonio personale 
 
 ## Uso online: nessuna installazione di Node.js
 
-**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: sono nel tuo archivio Supabase privato, non pubblicati su GitHub. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. La demo e la guida funzionano anche offline dopo il primo caricamento; il patrimonio personale richiede accesso online.
+**GitHub Pages attivo**, verificato tramite API GitHub il 19 novembre 2026 (`status: built`, branch corrente `/docs`). Apri **https://sylarpower.github.io/BauPatrimonio/**. I nuovi push aggiornano il sito dopo il completamento del build Pages. Il codice e i dati di esempio sono pubblici, i tuoi dati personali non vengono pubblicati nel repository: sono nel tuo archivio Firestore privato, non pubblicati su GitHub. Apri la guida da **Profilo → Guida passo passo**. Su Chrome puoi installare l’app; su Safari usa Condividi → Aggiungi alla schermata Home. La demo e la guida funzionano anche offline dopo il primo caricamento; il patrimonio personale richiede accesso online.
 
 ### Pubblicazione per il manutentore
 
-La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages da selezionare è **Deploy from a branch → arena/dcc936f9-baupatrimonio → /docs** per questa pubblicazione; dopo un eventuale merge si può scegliere `main /docs`. Questo non pubblica il database locale o backup.
+La build statica è in `docs/`, generata con `npm run prepare:pages`; il manifesto `.pages-files.json` permette di aggiornare soltanto gli artefatti senza cancellare la documentazione sorgente. Nessun workflow privilegiato è necessario. La configurazione Pages da selezionare è **Deploy from a branch → main → /docs** dopo il merge approvato. Questo non pubblica il database locale o backup.
 
 I comandi Node sono esclusivamente per chi sviluppa/manutiene, non per chi usa l’app:
 
@@ -122,17 +122,13 @@ I termini Enable Banking prevedono uso gratuito personale limitato ai propri Lin
 
 ## Architettura e riservatezza
 
-Frontend statico pubblico + Supabase Auth/PostgREST nel progetto dedicato già esistente. Lo schema `supabase/migrations/202611190001_initial.sql` è stato preparato dal proprietario e verificato dall’agente il 19 novembre 2026: RLS abilitata e forzata, quattro policy, nessun privilegio anon di lettura o esecuzione save, RPC SECURITY INVOKER e confronto atomico di revisione. Non è stato rieseguito SQL su tabelle esistenti. URL Auth/redirect impostati al sito Pages; signup pubblico disabilitato con utente confermato esistente. Nessuna modifica all’altro progetto dell’utente.
+Frontend statico pubblico + Firebase Authentication email/password e Cloud Firestore, progetto dedicato `baupatrimonio-b99c3`. Configurazione pubblica in `src/cloud-config.ts`. API REST ufficiali, nessun analytics, SDK persistente, Cloud Functions o Cloud Storage. Sessione e refresh token solo in memoria, richieste no-store, nessun accesso al vecchio progetto Supabase dal client.
 
-Un primo login senza documento inizializza un archivio vuoto: mai caricamento implicito di demo o vecchi dati locali. Credenziali inserite solo nell’app e inviate a Supabase Auth. Non sono state recuperate password degli utenti né eseguiti accessi reali al loro posto. La chiave **publishable** è volutamente pubblica: non è un segreto bancario o service_role. Il controllo è RLS, non l’occultamento della chiave. Non è cifratura end-to-end: l’amministratore Supabase può amministrare i dati.
+Ogni account confermato legge solo `vaults/{uid}`. Il documento contiene payload JSON e revisione; il commit usa precondizione `updateTime` (oppure `exists:false` alla creazione), revisioni crescenti e coda di scritture. Regole in `firestore.rules`: proprietario autenticato con email verificata, divieto elenco/cancellazione, campi limitati, nessun altro percorso accessibile. Limite applicativo 900 KB di payload per restare sotto il limite documento Firestore. Non è cifratura end-to-end: l’amministratore Firebase mantiene accesso amministrativo.
 
-Le scritture sono serializzate e verificate per revisione. Le modifiche personali sono bloccate durante salvataggio o errore. Stato «Salvato online» solo dopo risposta positiva. In caso di errore si conservano modifiche non salvate in memoria, esportabili senza promemoria di backup. Il retry mantiene la revisione attesa; una richiesta già registrata ma senza risposta può generare conflitto al retry: nessuna sovrascrittura, rilettura con conferma dopo riconciliazione. Uscita e reload possono perdere il contenuto non salvato: avviso prima di abbandonare; uscita applicativa e rilettura chiedono conferma. Password/access token/refresh token non vengono scritti nel browser. Il refresh in-sessione usa solo token in memoria; alla scadenza non rinnovabile si richiede nuovo accesso. Le API usano `no-store`, non sono intercettate dal service worker.
+Un primo accesso inizializza solo un archivio vuoto, mai la demo o dati locali. Account, password e archivi Supabase NON vengono migrati automaticamente: creare un nuovo account Firebase e, se necessario, importare esplicitamente il proprio backup dal Profilo dopo aver verificato l’account di destinazione. Il vecchio progetto non viene modificato o cancellato.
 
-Il client è testato con API simulate e il DB con PostgreSQL/PGlite a due identità. Sul progetto reale sono stati verificati metadati di sicurezza e Auth, **non** eseguiti login/salvataggi con credenziali reali dell’utente. Guida senza passaggi tecnici in `public/GUIDA.html#cloud`. Supabase Free ha limiti e può sospendere i progetti inattivi: https://supabase.com/pricing. Nessun upgrade o add-on automatico nell’app. Il backend bancario Fideuram è ancora da implementare: l’archivio online non è un connettore AIS.
-
-La PWA cache-a esclusivamente file statici di build, guida e CSV di esempio; gli archivi finanziari sono dati applicativi espliciti IndexedDB, non cache HTTP. Le cache di altre app sullo stesso dominio non vengono eliminate. Percorso/base e hash del contenuto versionano la shell offline.
-
-Header consigliati per hosting sotto il tuo controllo: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Nessun estratto conto o backup deve essere pubblico. Non certificato WCAG, non verificato con dispositivi fisici o lettore di schermo reale; sono implementati etichette, focus, controlli di tastiera, importi non espressi soltanto dal colore e alternative tabellari.
+**Rilascio bloccato finché non sono pubblicate le regole:** seguire [FIREBASE_SETUP.md](./FIREBASE_SETUP.md). Nessuna autorizzazione amministrativa Firebase è disponibile all’agente. I test Auth/Firestore del browser sono simulati e non attestano consegna email, configurazione reale o isolamento di produzione. I test delle regole richiedono Firestore Emulator; non confonderli con i test storici PostgreSQL. Usare solo Spark, nessuna fatturazione/upgrade: raggiunte le quote il servizio può rifiutare richieste; non esiste fallback a scritture locali dichiarate online. Il backend bancario non è implementato.
 
 ## Backup ed eliminazione, manualmente
 
@@ -141,24 +137,18 @@ Header consigliati per hosting sotto il tuo controllo: `X-Content-Type-Options: 
 3. Sul destinatario entra nello stesso tipo di archivio → **Ripristina backup JSON** → conferma sostituzione. Nessuna fusione automatica: conserva prima un backup della copia che stai sostituendo.
 4. Nel patrimonio personale svuotamento e ripristino modificano il documento ONLINE: controlla il salvataggio riuscito. Nella demo rimangono locali. Per eliminare l'archivio attuale: Profilo → **Elimina dati** → scrivi `ELIMINA`. Non modifica l'altro archivio e non elimina l’account Auth. Eventuali backup devono essere eliminati separatamente. Nessuna promessa di cancellazione forense da dischi/backup.
 
-## Test eseguiti e riproducibili, senza servizi
+## Test e verifiche
 
 ```sh
-npm test                     # contabilità, insight, operazioni e validazione backup
-npm run test:db              # PostgreSQL/PGlite, RLS tra due utenti (nessun server remoto)
+npm test                    # unitari contabilità e client Firebase simulato
+npm run test:e2e             # browser con API simulate
 npm run build
-npx playwright install --with-deps chromium
-BAU_TEST_PRODUCTION=1 npm run test:e2e
-npm audit
+# Solo per manutenzione, con Firestore Emulator locale già avviato:
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm run test:db
+npm run test:db:legacy       # vecchio schema Supabase/PGlite, non certifica Firebase
 ```
 
-Fallback Linux senza CDN browser:
-
-```sh
-BAU_TEST_PRODUCTION=1 BAU_USE_PACKAGED_CHROMIUM=1 npm run test:e2e
-```
-
-I test coprono demo 112k, primo conto e reload, nuove stime storiche, trasferimento, acquisto/vendita, capitale/interessi, archiviazione, dati mancanti/cambi, reimportazione, import strumenti, navigazione e insight in tutti i formati a **320, 390 e 1440 px** in Chiaro e AMOLED; tastiera, grafici parziali, assenza di export dei grafici, privacy ed esecuzione offline di produzione. Screenshot e download di test in `test-results/` ignorati da Git. Nessuna CI automatica su push/PR: per evitare consumo di servizi non richiesti i test si eseguono localmente. L'unico modello di workflow è il deploy Pages **opt-in**, da aggiungere manualmente con i propri permessi GitHub.
+`tests/firestore.mjs` rifiuta host non locali e usa il progetto `demo-baupatrimonio`: verifica due identità, anonimo, email non confermata, elenco negato, scritture incrociate, schema e revisioni. Richiede emulator e Java disponibili nell’ambiente di manutenzione, mai sul computer dell’utente finale. Le verifiche effettuate dall’agente sono riportate nella PR con eventuali limiti.
 
 ## Struttura principale
 
@@ -173,17 +163,12 @@ src/Portfolio.tsx          strumenti manuali e riconciliazione dossier
 src/validation.ts          validazione backup
 public/GUIDA.html          istruzioni utente offline
 scripts/build-sw.mjs      precache statica con percorso e hash di contenuto
-supabase/                 schema archivio online, RLS e test isolamento
+firestore.rules           regole del nuovo archivio Firebase
+supabase/                 schema storico, non modificato e non usato dal client
 ```
 
-### Registrazione con il mittente integrato Supabase
+### Account Firebase e recupero
 
-L’interfaccia offre **Accedi / Crea account**, conferma password, conferma email e reinvio del link. Il ritorno dalla mail rimuove i token dall’URL e richiede l’accesso con password: non importa sessioni dall’URL, non apre né crea un archivio fino all’accesso. Le risposte di registrazione non rivelano se un account esiste già.
+Signup crea l’account Firebase e richiede la verifica email, senza aprire un archivio; un errore di invio avvisa che l’account è già stato creato e suggerisce reinvio, non una seconda registrazione. Il reinvio richiede email e password, come previsto dall’API Firebase; non conserva token o password. Login verifica l’indirizzo con Firebase prima di leggere Firestore; le regole impongono nuovamente lo stesso requisito.
 
-Il gestore ha accettato esplicitamente gli stessi limiti della configurazione BauSplit: signup abilitato, conferma email obbligatoria, nessun SMTP esterno e nessun costo aggiuntivo. Il mittente integrato invia solo agli indirizzi autorizzati del team Supabase e ha un limite di 2 email/ora per progetto. **Non è una registrazione aperta a qualsiasi visitatore**: gli altri indirizzi non possono completare la conferma. L’interfaccia mostra questa limitazione e gli errori di invio senza dichiarare un successo inesistente. Non è stata verificata la consegna reale delle email: i test browser usano risposte simulate.
-
-Per aprire in futuro la registrazione a tutti servirà un mittente SMTP verificato. Non disabilitare la conferma email per aggirare i limiti e non inserire credenziali nel repository o nella chat. La sorgente GitHub Pages prevista è `main` → `/docs`.
-
-### Recupero password
-
-“Password dimenticata?” richiede l’email a Supabase con gli stessi limiti di invio. Il link `type=recovery` apre il cambio password, non il login: token solo in memoria, rimosso immediatamente dall’URL, verificato con Supabase Auth prima dell’aggiornamento. Non viene letto o scritto alcun archivio patrimoniale. Dopo il cambio password occorre accedere normalmente. Le richieste email hanno una pausa locale di 60 secondi, che non sostituisce né aggira i limiti del server.
+Le email possono usare il gestore Firebase predefinito: conferma o cambio password avvengono su `baupatrimonio-b99c3.firebaseapp.com`, poi il link Continua torna al sito. Non è necessario un gestore personalizzato. Se si sceglie di configurare il sito come gestore personalizzato, sono supportati `mode=verifyEmail` e `mode=resetPassword` con codice monouso rimosso dall’URL e tenuto solo in memoria; il codice viene validato da Firebase, mai convertito in una sessione del patrimonio. Dopo il recupero si accede con la nuova password. Pausa locale invii 60 secondi; quote e controlli anti-abuso Firebase restano validi.

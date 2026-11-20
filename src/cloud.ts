@@ -1,165 +1,204 @@
 import { isStore } from "./validation";
 import { empty, type Store } from "./model";
 import { cloudConfig } from "./cloud-config";
-export type CloudConfig = { url: string; key: string };
-let session:
-  | {
-      config: CloudConfig;
-      token: string;
-      expires: number;
-      refresh?: string;
-      revision: number;
-      ready: boolean;
-    }
-  | undefined;
-let queue: Promise<unknown> = Promise.resolve();
+// REST ufficiali Firebase: nessun SDK analytics, cache persistente o funzione a pagamento.
+export const authRedirectUrl = "https://sylarpower.github.io/BauPatrimonio/";
+const authBase = "https://identitytoolkit.googleapis.com/v1/accounts:";
+const database = `projects/${cloudConfig.projectId}/databases/(default)/documents`;
+const firestore = `https://firestore.googleapis.com/v1/${database}`;
+type Session = {
+  uid: string;
+  token: string;
+  refresh: string;
+  expires: number;
+  revision: number;
+  updateTime?: string;
+  ready: boolean;
+  renewing?: Promise<void>;
+};
+let session: Session | undefined;
 let generation = 0;
-export function validateCloudConfig(c: CloudConfig) {
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(c.url))
-    throw Error(
-      "Usa l’URL HTTPS del progetto Supabase, senza percorso finale.",
-    );
-  if (!c.key.startsWith("sb_publishable_")) {
-    try {
-      const p = JSON.parse(
-        atob(c.key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
-      );
-      if (p.role !== "anon") throw Error();
-    } catch {
-      throw Error(
-        "Usa soltanto la chiave pubblica publishable/anon, mai service_role o secret.",
-      );
-    }
-  }
+let queue: Promise<unknown> = Promise.resolve();
+function passwordCheck(password: string) {
+  if (password.length < 10 || password.length > 128)
+    throw Error("Usa una password da 10 a 128 caratteri.");
 }
-async function request(path: string, init: RequestInit = {}) {
-  const current = session;
-  if (!current) throw Error("Accedi al tuo archivio online.");
-  if (Date.now() > current.expires - 30000) {
-    if (!current.refresh)
-      throw Error(
-        "Sessione scaduta: accedi di nuovo. Le modifiche non salvate restano in questa pagina.",
-      );
-    const r = await fetch(
-      current.config.url + "/auth/v1/token?grant_type=refresh_token",
-      {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          apikey: current.config.key,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refresh_token: current.refresh }),
-        signal: AbortSignal.timeout(20000),
-      },
-    );
-    if (session !== current || !r.ok)
-      throw Error("Sessione scaduta: accedi di nuovo.");
-    const next = await r.json();
-    if (session !== current) throw Error("Sessione terminata.");
-    current.token = next.access_token;
-    current.refresh = next.refresh_token;
-    current.expires = Date.now() + next.expires_in * 1000;
-  }
-  let r: Response;
-  try {
-    r = await fetch(current.config.url + path, {
-      ...init,
-      cache: "no-store",
-      headers: {
-        apikey: current.config.key,
-        Authorization: "Bearer " + current.token,
-        "Content-Type": "application/json",
-        ...init.headers,
-      },
-      signal: AbortSignal.timeout(20000),
-    });
-  } catch {
+async function responseJson(response: Response) {
+  const data = await response.json().catch(() => ({}));
+  if (response.ok) return data;
+  const code = String(data.error?.message || data.error?.status || "");
+  if (
+    response.status === 429 ||
+    /TOO_MANY_ATTEMPTS|QUOTA_EXCEEDED|RESOURCE_EXHAUSTED/.test(code)
+  )
     throw Error(
-      "Connessione non riuscita. Le modifiche non salvate restano in questa pagina: non chiuderla.",
+      "Troppe richieste o quota gratuita raggiunta. Attendi prima di riprovare; non richiedere altre email.",
     );
-  }
-  if (session !== current)
-    throw Error("Sessione terminata: risposta ignorata.");
-  if (!r.ok)
+  if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(code))
     throw Error(
-      r.status === 409 || r.status === 400
-        ? "Salvataggio rifiutato o conflitto con un altro dispositivo. Nessun dato remoto sovrascritto."
-        : "Accesso online non riuscito. Verifica la connessione o accedi di nuovo.",
+      "Email o password non corrette. Usa Password dimenticata se necessario.",
     );
-  const result = r.status === 204 ? null : await r.json();
-  if (session !== current)
-    throw Error("Sessione terminata: risposta ignorata.");
-  return result;
+  if (/EMAIL_EXISTS/.test(code))
+    throw Error(
+      "Registrazione non completata. Se hai già un account Firebase, usa Accedi o Password dimenticata.",
+    );
+  if (/INVALID_OOB_CODE|EXPIRED_OOB_CODE/.test(code))
+    throw Error("Link email scaduto o non valido. Richiedi un nuovo link.");
+  if (/WEAK_PASSWORD/.test(code))
+    throw Error("Scegli una password più lunga e difficile da indovinare.");
+  if (
+    /OPERATION_NOT_ALLOWED|CONFIGURATION_NOT_FOUND|API_KEY_INVALID/.test(code)
+  )
+    throw Error(
+      "Configurazione Firebase non disponibile: il gestore deve verificare Email/Password e la configurazione web.",
+    );
+  if (response.status === 403 || /PERMISSION_DENIED/.test(code))
+    throw Error(
+      "Accesso Firestore negato. Verifica email confermata e pubblicazione delle regole di sicurezza BauPatrimonio; nessun dato sovrascritto.",
+    );
+  if (
+    response.status === 409 ||
+    /FAILED_PRECONDITION|ABORTED|ALREADY_EXISTS/.test(code)
+  )
+    throw Error(
+      "Conflitto con un altro dispositivo. Ricarica i dati online: nessun dato remoto sovrascritto.",
+    );
+  if (/INVALID_EMAIL/.test(code))
+    throw Error("Inserisci un indirizzo email valido.");
+  throw Error(
+    "Operazione Firebase non riuscita. Riprova più tardi; nessun salvataggio dichiarato riuscito.",
+  );
 }
-export async function cloudLogin(
-  config: CloudConfig,
-  email: string,
-  password: string,
-) {
-  validateCloudConfig(config);
-  cloudLogout();
-  const ticket = generation;
-  // Credenziali inviate esclusivamente a Supabase Auth del progetto scelto; mai memorizzate.
-  const r = await fetch(config.url + "/auth/v1/token?grant_type=password", {
-    method: "POST",
+async function send(url: string, init: RequestInit = {}) {
+  return fetch(url, {
+    ...init,
     cache: "no-store",
-    headers: { apikey: config.key, "Content-Type": "application/json" },
-    body: JSON.stringify({ email: email.trim(), password }),
     signal: AbortSignal.timeout(20000),
   });
-  if (!r.ok) {
-    const detail = await r.json().catch(() => ({}));
-    if (r.status === 429)
-      throw Error(
-        "Troppi tentativi di accesso. Attendi prima di riprovare; non richiedere altre email.",
-      );
-    if (detail.code === "email_not_confirmed")
-      throw Error(
-        "Indirizzo email non ancora confermato. Apri il link di conferma prima di accedere.",
-      );
-    if (
-      detail.code === "invalid_credentials" ||
-      detail.error_code === "invalid_credentials"
-    )
-      throw Error(
-        "Email o password non corrette. Se non ricordi la password, usa Password dimenticata: non creare un secondo account.",
-      );
-    throw Error("Servizio di accesso non disponibile. Riprova più tardi.");
-  }
-  const data = await r.json();
-  if (ticket !== generation) throw Error("Accesso annullato.");
-  session = {
-    config,
-    token: data.access_token,
-    expires: Date.now() + data.expires_in * 1000,
-    refresh: data.refresh_token,
-    revision: 0,
-    ready: false,
-  };
+}
+async function authRequest(action: string, body: Record<string, unknown>) {
+  return responseJson(
+    await send(authBase + action + "?key=" + cloudConfig.apiKey, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+async function credentials(email: string, password: string) {
+  return authRequest("signInWithPassword", {
+    email: email.trim(),
+    password,
+    returnSecureToken: true,
+  });
 }
 export function cloudLogout() {
   generation++;
   session = undefined;
 }
 export function cloudActive() {
-  return !!session?.ready && Date.now() < session.expires;
+  return !!session?.ready;
+}
+async function token(current: Session) {
+  if (session !== current) throw Error("Sessione terminata.");
+  if (Date.now() > current.expires - 30000) {
+    current.renewing ??= (async () => {
+      const data = await responseJson(
+        await send(
+          "https://securetoken.googleapis.com/v1/token?key=" +
+            cloudConfig.apiKey,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              grant_type: "refresh_token",
+              refresh_token: current.refresh,
+            }).toString(),
+          },
+        ),
+      );
+      if (session !== current) throw Error("Sessione terminata.");
+      current.token = data.id_token;
+      current.refresh = data.refresh_token;
+      current.expires = Date.now() + Number(data.expires_in) * 1000;
+    })().finally(() => {
+      current.renewing = undefined;
+    });
+    await current.renewing;
+  }
+  return current.token;
+}
+export async function cloudLogin(email: string, password: string) {
+  cloudLogout();
+  const ticket = generation;
+  const data = await credentials(email, password);
+  const info = await authRequest("lookup", { idToken: data.idToken });
+  if (ticket !== generation) throw Error("Accesso annullato.");
+  const user = info.users?.[0];
+  if (!user?.emailVerified)
+    throw Error(
+      "Indirizzo email non ancora confermato. Apri il link di conferma, poi accedi di nuovo.",
+    );
+  if (
+    !data.localId ||
+    user.localId !== data.localId ||
+    !data.idToken ||
+    !data.refreshToken
+  )
+    throw Error("Risposta di accesso non valida.");
+  session = {
+    uid: data.localId,
+    token: data.idToken,
+    refresh: data.refreshToken,
+    expires: Date.now() + Number(data.expiresIn) * 1000,
+    revision: 0,
+    ready: false,
+  };
+}
+function documentName(current: Session) {
+  return database + "/vaults/" + encodeURIComponent(current.uid);
 }
 export async function cloudRead() {
-  if (session) session.ready = false;
-  const rows = await request("/rest/v1/vaults?select=document,revision");
-  if (!session) throw Error("Sessione terminata.");
-  if (rows.length > 1) throw Error("Isolamento archivio non valido.");
-  if (rows.length && !isStore(rows[0].document))
+  const current = session;
+  if (!current) throw Error("Accedi al tuo archivio online.");
+  current.ready = false;
+  const bearer = await token(current);
+  const response = await send(
+    firestore + "/vaults/" + encodeURIComponent(current.uid),
+    { headers: { Authorization: "Bearer " + bearer } },
+  );
+  if (session !== current)
+    throw Error("Sessione terminata: risposta ignorata.");
+  if (response.status === 404) {
+    current.revision = 0;
+    current.updateTime = undefined;
+    return undefined;
+  }
+  const data = await responseJson(response);
+  if (session !== current)
+    throw Error("Sessione terminata: risposta ignorata.");
+  let document: unknown;
+  try {
+    document = JSON.parse(data.fields.payload.stringValue);
+  } catch {
     throw Error("Documento cloud non valido: nessun dato locale sostituito.");
-  session.revision = rows[0]?.revision || 0;
-  session.ready = false;
-  return rows[0]?.document as Store | undefined;
+  }
+  const revision = Number(data.fields.revision?.integerValue);
+  if (
+    !isStore(document) ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1 ||
+    !data.updateTime
+  )
+    throw Error("Documento cloud non valido: nessun dato locale sostituito.");
+  current.revision = revision;
+  current.updateTime = data.updateTime;
+  return document;
 }
 export function cloudUseLoaded() {
   if (session) session.ready = true;
 }
-export function cloudSave(s: Store, initial = false): Promise<void> {
+export function cloudSave(document: Store, initial = false): Promise<void> {
   const current = session;
   if (!current)
     return Promise.reject(
@@ -168,37 +207,64 @@ export function cloudSave(s: Store, initial = false): Promise<void> {
   if (!initial && !current.ready)
     return Promise.reject(
       Error(
-        "Salvataggio interrotto. Ricarica i dati online o accedi di nuovo; le modifiche non salvate restano in questa pagina.",
+        "Salvataggio interrotto. Ricarica i dati online prima di continuare.",
       ),
     );
+  // Snapshot al momento della richiesta, non quando si svuota la coda.
+  const payload = JSON.stringify(document);
   const work = queue.then(async () => {
     if (session !== current || (!initial && !current.ready))
-      throw Error(
-        "Salvataggio interrotto: ricarica i dati online prima di continuare.",
-      );
-    if (!isStore(s)) throw Error("Dati non validi: invio cloud annullato.");
+      throw Error("Salvataggio interrotto: ricarica i dati online.");
     try {
-      const revision = await request("/rest/v1/rpc/save_vault", {
-        method: "POST",
-        body: JSON.stringify({
-          p_document: s,
-          p_expected_revision: current.revision,
+      if (!isStore(JSON.parse(payload)))
+        throw Error("Dati non validi: invio annullato.");
+      if (new TextEncoder().encode(payload).length > 900000)
+        throw Error(
+          "Archivio troppo grande per il documento Firestore. Nessun dato sovrascritto: conserva una copia dal Profilo.",
+        );
+      const bearer = await token(current);
+      const data = await responseJson(
+        await send(firestore + ":commit", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + bearer,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            writes: [
+              {
+                update: {
+                  name: documentName(current),
+                  fields: {
+                    payload: { stringValue: payload },
+                    revision: { integerValue: String(current.revision + 1) },
+                  },
+                },
+                currentDocument: current.updateTime
+                  ? { updateTime: current.updateTime }
+                  : { exists: false },
+              },
+            ],
+          }),
         }),
-      });
-      current.revision = Number(revision);
+      );
+      if (session !== current)
+        throw Error("Sessione terminata: risposta ignorata.");
+      if (!data.writeResults?.[0]?.updateTime)
+        throw Error("Conferma salvataggio mancante.");
+      current.updateTime = data.writeResults[0].updateTime;
+      current.revision++;
       current.ready = true;
-    } catch (e) {
+    } catch (err) {
       current.ready = false;
-      throw e;
+      throw err;
     }
   });
   queue = work.catch(() => {});
   return work;
 }
-
-/** Nessuna lettura dell'archivio locale: ogni account apre solo il proprio documento remoto. */
 export async function cloudOpen(email: string, password: string) {
-  await cloudLogin(cloudConfig, email, password);
+  await cloudLogin(email, password);
   const current = session;
   try {
     const existing = await cloudRead();
@@ -209,106 +275,50 @@ export async function cloudOpen(email: string, password: string) {
     const document = empty();
     await cloudSave(document, true);
     return document;
-  } catch (e) {
+  } catch (err) {
     if (session === current) cloudLogout();
-    throw e;
+    throw err;
   }
 }
-
-// Signup abilitato con i limiti del mittente integrato, accettati dal gestore.
-// Nessun fallback a conferma automatica o chiavi privilegiate.
-export const authRedirectUrl = "https://sylarpower.github.io/BauPatrimonio/";
-async function authRegistrationRequest(
-  path: string,
-  body: Record<string, unknown>,
-) {
-  const response = await fetch(
-    cloudConfig.url +
-      "/auth/v1/" +
-      path +
-      "?redirect_to=" +
-      encodeURIComponent(authRedirectUrl),
-    {
-      method: "POST",
-      cache: "no-store",
-      headers: { apikey: cloudConfig.key, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(20000),
-    },
-  );
-  if (response.ok) return;
-  const data = await response.json().catch(() => ({}));
-  const code = data.code || data.error_code;
-  if (code === "signup_disabled")
-    throw Error(
-      "Le nuove registrazioni non sono ancora disponibili. Puoi accedere se hai già un account.",
-    );
-  if (code === "email_address_not_authorized")
-    throw Error(
-      "Il servizio email integrato è limitato agli indirizzi autorizzati del team Supabase. Questo indirizzo non può ricevere la conferma con la configurazione attuale.",
-    );
-  if (
-    response.status === 429 ||
-    code === "over_email_send_rate_limit" ||
-    code === "over_request_rate_limit"
-  )
-    throw Error(
-      "Troppe richieste. Attendi prima di riprovare e controlla la posta, anche nello spam.",
-    );
-  if (code === "weak_password")
-    throw Error("Scegli una password più lunga e difficile da indovinare.");
-  throw Error(
-    "Registrazione non completata. Controlla i dati o riprova più tardi. Se hai già un account, usa Accedi.",
-  );
+async function verification(idToken: string) {
+  await authRequest("sendOobCode", {
+    requestType: "VERIFY_EMAIL",
+    idToken,
+    continueUrl: authRedirectUrl,
+  });
 }
 export async function cloudSignUp(email: string, password: string) {
-  if (password.length < 10 || password.length > 128)
-    throw Error("Usa una password da 10 a 128 caratteri.");
-  await authRegistrationRequest("signup", { email: email.trim(), password });
-}
-export async function cloudResendConfirmation(email: string) {
-  await authRegistrationRequest("resend", {
-    type: "signup",
+  passwordCheck(password);
+  const data = await authRequest("signUp", {
     email: email.trim(),
+    password,
+    returnSecureToken: true,
   });
+  try {
+    await verification(data.idToken);
+  } catch {
+    throw Error(
+      "Account creato, ma invio email di conferma non riuscito. Usa il reinvio con email e password, senza creare un secondo account.",
+    );
+  }
 }
-
+// Firebase richiede la password per ottenere un token temporaneo di verifica.
+// Non viene creata una sessione dell'archivio e il token non è conservato.
+export async function cloudResendConfirmation(email: string, password: string) {
+  const data = await credentials(email, password);
+  await verification(data.idToken);
+}
 export async function cloudRequestRecovery(email: string) {
-  await authRegistrationRequest("recover", { email: email.trim() });
+  await authRequest("sendOobCode", {
+    requestType: "PASSWORD_RESET",
+    email: email.trim(),
+    continueUrl: authRedirectUrl,
+  });
 }
-export async function cloudResetPassword(token: string, password: string) {
-  if (password.length < 10 || password.length > 128)
-    throw Error("Usa una password da 10 a 128 caratteri.");
-  const headers = {
-    apikey: cloudConfig.key,
-    Authorization: "Bearer " + token,
-    "Content-Type": "application/json",
-  };
-  const user = await fetch(cloudConfig.url + "/auth/v1/user", {
-    headers,
-    cache: "no-store",
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!user.ok)
-    throw Error(
-      "Link di recupero scaduto o non valido. Richiedi una nuova email di recupero.",
-    );
-  const response = await fetch(cloudConfig.url + "/auth/v1/user", {
-    method: "PUT",
-    headers,
-    body: JSON.stringify({ password }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!response.ok)
-    throw Error(
-      "Password non aggiornata. Usa una password nuova oppure richiedi un nuovo link.",
-    );
-  // Il token di recupero non diventa mai una sessione dell’archivio.
-  await fetch(cloudConfig.url + "/auth/v1/logout?scope=global", {
-    method: "POST",
-    headers,
-    cache: "no-store",
-    signal: AbortSignal.timeout(20000),
-  }).catch(() => {});
+export async function cloudResetPassword(oobCode: string, password: string) {
+  passwordCheck(password);
+  await authRequest("resetPassword", { oobCode, newPassword: password });
+}
+export async function cloudConfirmEmail(oobCode: string) {
+  await authRequest("update", { oobCode });
 }

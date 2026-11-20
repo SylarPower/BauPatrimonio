@@ -82,7 +82,7 @@ test("conflitto conserva la pagina, blocca modifiche e non dichiara salvato", as
   await page.getByLabel("Nome della voce").fill("Non salvato");
   await page.getByLabel("Saldo contabile").fill("123");
   await page.getByRole("button", { name: "Salva", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("conflitto");
+  await expect(page.getByRole("alert")).toContainText(/conflitto/i);
   await expect(page.locator(".net-amount")).toContainText("123,00");
   await expect(page.getByText("Salvato online", { exact: true })).toHaveCount(
     0,

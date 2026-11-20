@@ -21,6 +21,7 @@ export default function AuthGate({
     [emailWait, setEmailWait] = useState(0),
     [error, setError] = useState(""),
     [email, setEmail] = useState(""),
+    [resendPassword, setResendPassword] = useState(""),
     [pending, setPending] = useState(false),
     [message, setMessage] = useState(
       initialNotice === "expired"
@@ -54,6 +55,7 @@ export default function AuthGate({
   }, [emailWait > 0]);
   function change(next: "signin" | "signup") {
     setView(next);
+    setResendPassword("");
     setPending(false);
     setError("");
     setMessage("");
@@ -91,14 +93,11 @@ export default function AuthGate({
           ? "Ritrova i tuoi dati online. Sul computer e sul telefono usa lo stesso account."
           : "Un account gratuito, un archivio privato. Conferma la tua email prima di accedere."}
       </p>
-      {view === "signup" && (
-        <p className="auth-help">
-          Registrazione limitata: il mittente integrato Supabase invia email
-          solo agli indirizzi autorizzati del team, con un limite di 2 email
-          all’ora per il progetto. Gli altri indirizzi non possono completare la
-          conferma.
-        </p>
-      )}
+      <p className="auth-help">
+        Nuovo accesso Firebase: gli account Supabase precedenti non vengono
+        trasferiti. Se non hai ancora un account Firebase BauPatrimonio, scegli
+        Crea account. I vecchi dati non vengono cancellati.
+      </p>
       {!pending && (
         <form
           key={view}
@@ -213,7 +212,7 @@ export default function AuthGate({
               await cloudRequestRecovery(email);
               if (live.current)
                 setMessage(
-                  "Se l’account esiste, riceverai il link per scegliere una nuova password. Il servizio email ha i limiti del team Supabase: evita richieste ripetute.",
+                  "Se l’account esiste, riceverai il link per scegliere una nuova password. Gli invii Firebase hanno quote anti-abuso: evita richieste ripetute.",
                 );
             } catch (err) {
               if (live.current) setError(explain(err));
@@ -227,8 +226,8 @@ export default function AuthGate({
       )}
       {emailWait > 0 && (
         <p className="auth-help">
-          Nuovo invio email disponibile tra {emailWait} secondi. Il limite
-          orario Supabase resta valido.
+          Nuovo invio email disponibile tra {emailWait} secondi. Il limite del
+          servizio Firebase resta valido.
         </p>
       )}
       {message && <p role="status">{message}</p>}
@@ -239,16 +238,33 @@ export default function AuthGate({
       )}
       {view === "signup" && (
         <div className="auth-followup">
+          <label>
+            Password per reinviare la conferma
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={resendPassword}
+              onChange={(e) => setResendPassword(e.target.value)}
+              disabled={busy}
+              maxLength={128}
+            />
+          </label>
           <button
             type="button"
             className="text-button"
             disabled={busy || emailWait > 0 || !/^\S+@\S+\.\S+$/.test(email)}
             onClick={async () => {
+              if (!resendPassword) {
+                setError("Inserisci la password per reinviare la conferma.");
+                return;
+              }
               setBusy(true);
               setError("");
+              setMessage("");
               try {
                 startEmailWait();
-                await cloudResendConfirmation(email);
+                await cloudResendConfirmation(email, resendPassword);
+                setResendPassword("");
                 if (live.current)
                   setMessage(
                     "Se l’indirizzo è in attesa di conferma, riceverai una nuova email. Controlla anche lo spam.",
@@ -275,7 +291,7 @@ export default function AuthGate({
       )}
       <p className="auth-help">
         Nessuna chiave da inserire. Non usare le credenziali bancarie o la
-        password della dashboard Supabase. L’archivio di ogni account è separato
+        password della console Firebase. L’archivio di ogni account è separato
         dagli altri.
       </p>
       <button
