@@ -114,6 +114,18 @@ Esempi in `public/examples/`, scaricabili da Fonti e dalla guida. **Sono traccia
 - Non è una deduplicazione bancaria universale: file modificati arbitrariamente o esportazioni parzialmente sovrapposte richiedono verifica dell'anteprima. Il file originale non viene conservato, solo dati confermati e registro importazione.
 - Valuta estera senza cambio → totale parziale; registra dal dettaglio la valutazione con il cambio pertinente.
 
+## Excel Fideuram — lista operazioni
+
+In **Fonti → Movimenti → Excel Fideuram** seleziona un export `.xlsx` della lista operazioni (non `.xls`, PDF o un riepilogo titoli). Vengono riconosciuti il preambolo e le colonne **Data, Operazione, Dettagli, Conto o carta, Contabilizzazione, Categoria, Valuta, Importo**; nessuna colonna del preambolo viene interpretata come movimento. Il formato è stato ricavato dalla struttura dell’esempio privato fornito su Drive: l’originale e i dati personali non sono nel repository o nei test.
+
+Scegli esplicitamente un conto/carta del file e una voce **Liquidità** attiva di destinazione; conferma dopo l’anteprima. Ogni conto/carta va importato separatamente. Non è un connettore bancario e non richiede credenziali Fideuram.
+
+- File fino a 2 MB, limite di espansione ZIP 12 MB/200 elementi e massimo 10.000 righe; parser XLSX caricato solo all’uso, nessuna macro eseguita o formula calcolata. File protetti o non riconosciuti vengono rifiutati.
+- Importi con segno e valuta della colonna (non quelli citati nei dettagli di pagamenti esteri); celle numeriche lette come stringhe decimali. Date Excel o date italiane; righe future/impossibili, stati diversi da CONTABILIZZATO e campi obbligatori mancanti sono esclusi con motivo. Nessuno zero inventato.
+- Le operazioni già importate sono riconosciute con impronta dei campi contabili e descrittivi, indipendente da nome file/ordine; copie identiche nella stessa esportazione hanno ID distinti ma richiedono conferma. Possibili duplicati con stessa data/importo nel file o nel registro restano esclusi fino alla conferma esplicita. Non si assume che un numero mandato sia un ID transazione.
+- Si conservano operazione, dettagli e categoria originale nella descrizione. Non vengono aggiornati saldi, valutazioni, cambi o flussi di rendimento; bonifici, giroconti e ricariche non diventano guadagni/perdite automatici. Le operazioni di carta e conto possono sovrapporsi: scegli consapevolmente il conto corretto, nessun abbinamento automatico.
+- Parsing nel browser; l’originale non viene inviato o conservato. Solo i movimenti scelti e il registro importazione passano al normale salvataggio dell’archivio dopo conferma. Restano validi i limiti dell’archivio Firestore e la protezione dai conflitti.
+
 ## Banche e sandbox: stato effettivo
 
 **Nessun connettore bancario è attivo o testato in sandbox.** Verifica documentale aggiornata al 19 novembre 2026: Fideuram dispone di un percorso AIS tramite CBI Globe ed è citata nella documentazione Enable Banking per l’Italia. Trade Republic documenta conti, saldi e movimenti e il provider include clienti italiani; i movimenti risultano limitati a importo, valuta e data, senza descrizioni. **Le posizioni titoli/ETF e la previdenza non risultano coperte dalle API AIS consultate.**

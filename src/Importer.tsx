@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Papa from "papaparse";
+import FideuramImporter from "./FideuramImporter";
 import Decimal from "decimal.js";
 import { Upload, CheckCircle2, Info } from "lucide-react";
 import {
@@ -43,7 +44,47 @@ function validDate(s: string) {
     throw Error("Data non valida o futura");
   return d;
 }
-export default function Importer({ kind, store, onClose, onSave }: Props) {
+export default function Importer(props: Props) {
+  const [format, setFormat] = useState("csv");
+  return (
+    <>
+      {props.kind === "movements" && (
+        <div
+          className="insight-tabs"
+          role="group"
+          aria-label="Formato importazione"
+        >
+          <button
+            type="button"
+            className={format === "csv" ? "selected" : ""}
+            aria-pressed={format === "csv"}
+            onClick={() => setFormat("csv")}
+          >
+            CSV
+          </button>
+          <button
+            type="button"
+            className={format === "fideuram" ? "selected" : ""}
+            aria-pressed={format === "fideuram"}
+            onClick={() => setFormat("fideuram")}
+          >
+            Excel Fideuram
+          </button>
+        </div>
+      )}
+      {format === "fideuram" ? (
+        <FideuramImporter
+          store={props.store}
+          onSave={props.onSave}
+          onClose={props.onClose}
+        />
+      ) : (
+        <CsvImporter {...props} />
+      )}
+    </>
+  );
+}
+function CsvImporter({ kind, store, onClose, onSave }: Props) {
   const [account, setAccount] = useState(
       store.assets.find((a) => !a.archivedAt)?.id || "",
     ),

@@ -230,6 +230,36 @@
     recente. I backup restano un’esportazione facoltativa dal Profilo, non il
     meccanismo di sincronizzazione.
   </p>
+  <h2>Importare Excel Fideuram</h2>
+  <ol>
+    <li>
+      Crea prima una voce di categoria Liquidità per il conto di destinazione.
+    </li>
+    <li>In Fonti scegli Movimenti, poi Excel Fideuram.</li>
+    <li>Seleziona il file .xlsx della lista operazioni, fino a 2 MB.</li>
+    <li>
+      Scegli il conto o la carta contenuti nel file e la voce Liquidità di
+      destinazione.
+    </li>
+    <li>
+      Apri Verifica anteprima: vengono mostrate righe valide, escluse e
+      possibili duplicati. Solo le operazioni contabilizzate con data e importo
+      validi sono importabili.
+    </li>
+    <li>
+      Conferma il numero di movimenti. I casi dubbi restano esclusi finché non
+      dichiari di averli verificati.
+    </li>
+  </ol>
+  <p>
+    Il file è letto nel browser e non viene conservato. L’importazione aggiunge
+    movimenti al registro ma
+    <strong>non cambia i saldi o il rendimento</strong>. Per aggiornare il
+    patrimonio registra separatamente una rilevazione. Bonifici e ricariche
+    potrebbero essere trasferimenti tra tuoi conti, non spese o guadagni: non
+    vengono classificati automaticamente. Importa un conto/carta alla volta
+    evitando di contare due volte lo stesso pagamento.
+  </p>
   <h2 id="cloud">
     Il tuo patrimonio online: solo accesso, nessuna configurazione
   </h2>
@@ -369,9 +399,9 @@
   </p>
   <p>
     La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
-    import PDF/XLSX o sincronizzazione realtime. Il sito online non implica da
-    solo che i dati siano salvati online: occorre accedere all’account e
-    attendere lo stato «Salvato online».
+    import PDF, Excel generico o sincronizzazione realtime. Il sito online non
+    implica da solo che i dati siano salvati online: occorre accedere
+    all’account e attendere lo stato «Salvato online».
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
