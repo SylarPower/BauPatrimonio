@@ -18,10 +18,12 @@
     "@fontsource/dm-sans": "^5.2.6",
     "@fontsource/newsreader": "^5.2.5",
     "decimal.js": "^10.6.0",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.468.0",
     "papaparse": "^5.5.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "read-excel-file": "^9.3.20"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
@@ -36,6 +38,7 @@
     "prettier": "^3.10.1",
     "typescript": "~5.7.2",
     "vite": "^6.4.6",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "write-excel-file": "^4.1.1"
   }
 }

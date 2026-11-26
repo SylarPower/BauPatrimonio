@@ -1115,7 +1115,7 @@ function App({
                           Registra le operazioni senza alterare i saldi.
                         </span>
                         <span className="text-button">
-                          Importa CSV <ArrowRight size={16} />
+                          CSV / Excel Fideuram <ArrowRight size={16} />
                         </span>
                       </button>
                     </div>
