@@ -1,13 +1,15 @@
 import { useState } from "react";
 import Decimal from "decimal.js";
 import { marketDocument } from "./market-widget";
-import type { Asset } from "./model";
+import { latest, type Asset } from "./model";
 export default function InstrumentAnalysis({
   assets,
   hidden = false,
+  onManage,
 }: {
   assets: Asset[];
   hidden?: boolean;
+  onManage?: (asset: Asset) => void;
 }) {
   const instruments = [
     ...new Map(
@@ -46,12 +48,61 @@ export default function InstrumentAnalysis({
     low = Math.min(...prices),
     high = Math.max(...prices);
   return (
-    <section className="card content-card instrument-analysis">
+    <section
+      id="instruments"
+      className="card content-card instrument-analysis"
+      tabIndex={-1}
+    >
       <h2>Azioni ed ETF · prezzi</h2>
       <p>
         Consulta il mercato separatamente dai prezzi registrati nel tuo dossier.
         Nessuna quotazione modifica automaticamente il patrimonio.
       </p>
+      <div className="instrument-overview">
+        {assets
+          .filter((a) => !a.archivedAt)
+          .map((a) => (
+            <section key={a.id}>
+              <div className="insight-heading">
+                <h3>{a.name}</h3>
+                {onManage && (
+                  <button className="secondary" onClick={() => onManage(a)}>
+                    Gestisci strumenti · {a.name}
+                  </button>
+                )}
+              </div>
+              {!latest(a)?.positions?.length && (
+                <p>
+                  Nessuno strumento registrato in questo dossier. Aggiungi il
+                  dettaglio senza ricontare il totale.
+                </p>
+              )}
+              {latest(a)?.positions?.map((p) => (
+                <button
+                  className="instrument-tile"
+                  key={p.id}
+                  onClick={() => {
+                    setInstrument(p.isin || p.name);
+                    setAccount(a.id);
+                    setCurrency(p.currency);
+                  }}
+                >
+                  <span>
+                    <strong>{p.name}</strong>
+                    <small>
+                      {p.isin || "ISIN non registrato"} · {p.date}
+                    </small>
+                  </span>
+                  <span>
+                    {hidden ? "••••••" : p.quantity} quote ·{" "}
+                    {hidden ? "••••••" : p.price} {p.currency}
+                    <small>Vedi prezzi e storico →</small>
+                  </span>
+                </button>
+              ))}
+            </section>
+          ))}
+      </div>
       <label>
         Strumento registrato
         <select
