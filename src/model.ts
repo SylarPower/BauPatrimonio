@@ -44,6 +44,18 @@ export type Asset = {
   details: Record<string, string>;
 };
 export type Movement = {
+  category?: string;
+  movementKind?: "income" | "expense" | "transfer" | "review";
+  categoryOrigin?: "manual" | "bank" | "history";
+  bank?: {
+    provider: "fideuram";
+    account: string;
+    reference?: string;
+    operation: string;
+    details: string;
+    category: string;
+    status: string;
+  };
   id: string;
   assetId: string;
   date: string;
@@ -174,6 +186,7 @@ export function transfer(
         amount: (id === fromId ? n.neg() : n).toString(),
         currency: "EUR",
         description: "Trasferimento interno",
+        movementKind: "transfer" as const,
       })),
     ],
   };

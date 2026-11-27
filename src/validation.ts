@@ -105,6 +105,23 @@ export function isStore(input: unknown): input is Store {
           decimal(m.amount) &&
           currencies.includes(m.currency) &&
           text(m.description, 2000) &&
+          (m.category === undefined || text(m.category, 100)) &&
+          (m.movementKind === undefined ||
+            ["income", "expense", "transfer", "review"].includes(
+              m.movementKind,
+            )) &&
+          (m.categoryOrigin === undefined ||
+            ["manual", "bank", "history"].includes(m.categoryOrigin)) &&
+          (m.bank === undefined ||
+            (m.bank !== null &&
+              m.bank.provider === "fideuram" &&
+              text(m.bank.account, 200) &&
+              (m.bank.reference === undefined ||
+                /^\d{16}$/.test(m.bank.reference)) &&
+              text(m.bank.operation, 1000) &&
+              text(m.bank.details, 2000) &&
+              text(m.bank.category, 100) &&
+              text(m.bank.status, 100))) &&
           (m.performanceFlow === undefined || decimal(m.performanceFlow)),
       ) &&
       s.imports.every(

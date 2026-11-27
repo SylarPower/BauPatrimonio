@@ -46,7 +46,7 @@ for (const width of [320, 390, 1440])
         .getByRole("button", { name: "Prova con dati di esempio" })
         .click();
       const nav = page.locator(width < 700 ? ".mobile-nav" : ".desktop-nav");
-      for (const name of ["Panoramica", "Patrimonio", "Storico", "Fonti"]) {
+      for (const name of ["Panoramica", "Patrimonio", "Storico", "Movimenti"]) {
         await nav.getByRole("button", { name, exact: true }).click();
         await expect(page.locator(".page-heading h1")).toBeVisible();
         expect(
@@ -62,7 +62,7 @@ for (const width of [320, 390, 1440])
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).not.toBeVisible();
     });
-test("importazione ripetuta non duplica e trasferimento non cambia netto", async ({
+test("trasferimento non cambia netto e resta escluso dalle spese", async ({
   page,
 }) => {
   await page.goto("/");
@@ -83,27 +83,19 @@ test("importazione ripetuta non duplica e trasferimento non cambia netto", async
   await expect(page.locator(".net-amount")).toContainText("112.000,00");
   await page
     .locator(".desktop-nav")
-    .getByRole("button", { name: "Fonti" })
+    .getByRole("button", { name: "Movimenti" })
     .click();
-  const file = {
-    name: "movimenti.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(
-      "data;importo;valuta;descrizione;id\n2026-11-01;-45,50;EUR;Spesa;op001\n2026-11-01;-45,50;EUR;Altra spesa;op002",
-    ),
-  };
-  for (let i = 0; i < 2; i++) {
-    await page.locator(".import-choices>button").nth(1).click();
-    await page.locator("input[type=file]").setInputFiles(file);
-    await page.getByRole("button", { name: "Verifica anteprima" }).click();
-    if (i === 0) {
-      await expect(page.locator(".import-stats")).toContainText("2 valide");
-      await page.getByRole("button", { name: "Conferma 2 righe" }).click();
-    } else
-      await expect(page.getByRole("alert")).toContainText(
-        "già stato importato",
-      );
-  }
+  await page
+    .getByRole("combobox", { name: "Tipo", exact: true })
+    .first()
+    .selectOption("transfer");
+  await expect(page.getByText(/trasferimenti ·/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Importa Excel Fideuram", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Collegamenti bancari", { exact: true }),
+  ).toHaveCount(0);
 });
 test("screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
@@ -153,4 +145,49 @@ test("dettaglio strumenti riconciliato senza doppio conteggio", async ({
     .filter({ hasText: "Portafoglio ETF" })
     .click();
   await expect(page.locator(".position-summary")).toContainText("ETF globale");
+});
+
+test("prezzi personali consultabili dopo riconciliazione senza modificare il totale", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
+  const nav = page.locator(".desktop-nav");
+  await nav.getByRole("button", { name: "Patrimonio", exact: true }).click();
+  await page
+    .locator(".asset-row")
+    .filter({ hasText: "Portafoglio ETF" })
+    .click();
+  await page
+    .getByRole("button", { name: "Dettaglio strumenti e riconciliazione" })
+    .click();
+  await page.getByLabel("Nome", { exact: true }).fill("ETF prezzo personale");
+  await page.getByLabel("Quantità", { exact: true }).fill("80");
+  await page.getByLabel("Prezzo unitario", { exact: true }).fill("100");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Salva dettaglio riconciliato" })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Strumento registrato", exact: true })
+    .selectOption({ label: "ETF prezzo personale · ISIN non registrato" });
+  await expect(
+    page.getByRole("heading", { name: "I tuoi prezzi registrati" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Prezzi unitari storici inseriti da te", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Nascondi importi", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("heading", { name: "I tuoi prezzi registrati" })
+      .locator(".."),
+  ).toContainText("••••••");
+  await page
+    .getByRole("button", { name: "Mostra importi", exact: true })
+    .click();
+  await nav.getByRole("button", { name: "Panoramica", exact: true }).click();
+  await expect(page.locator(".net-amount")).toContainText("112.000,00");
 });

@@ -21,7 +21,6 @@ import {
   House,
   ChartNoAxesCombined,
   Clock3,
-  Link2,
   Settings2,
   Eye,
   EyeOff,
@@ -42,16 +41,12 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import { pref } from "./preferences";
-import Importer from "./Importer";
+import FideuramImporter from "./FideuramImporter";
+import Movements from "./Movements";
+import InstrumentAnalysis from "./InstrumentAnalysis";
 import Portfolio from "./Portfolio";
 import { isStore } from "./validation";
 import Insights from "./Insights";
-import {
-  bankCoverage,
-  coverageChecked,
-  personalProviderTerms,
-  personalProviderActivation,
-} from "./bankCoverage";
 import OperationForm from "./OperationForm";
 import {
   categories,
@@ -92,12 +87,12 @@ const colors: Record<Category, string> = {
   other: "#868da5",
   debt: "#be7658",
 };
-type Page = "Panoramica" | "Patrimonio" | "Storico" | "Fonti";
+type Page = "Panoramica" | "Patrimonio" | "Storico" | "Movimenti";
 const nav = [
   { name: "Panoramica" as Page, icon: House },
   { name: "Patrimonio" as Page, icon: Wallet },
   { name: "Storico" as Page, icon: Clock3 },
-  { name: "Fonti" as Page, icon: Link2 },
+  { name: "Movimenti" as Page, icon: ArrowLeftRight },
 ];
 function Dog({ small = false }: { small?: boolean }) {
   return (
@@ -650,7 +645,7 @@ function App({
                         ? "OGNI VOCE, AL SUO POSTO"
                         : page === "Storico"
                           ? "IL TUO PERCORSO NEL TEMPO"
-                          : "DA DOVE ARRIVANO I TUOI DATI"}
+                          : "ENTRATE, SPESE E TRASFERIMENTI"}
                   </div>
                   <h1>
                     {page === "Panoramica"
@@ -659,7 +654,7 @@ function App({
                         ? "Il tuo patrimonio"
                         : page === "Storico"
                           ? "La storia dei tuoi numeri"
-                          : "Le tue fonti"}
+                          : "I tuoi movimenti"}
                   </h1>
                   <p>
                     {page === "Panoramica"
@@ -668,7 +663,7 @@ function App({
                         ? "Aggiungi e aggiorna beni, investimenti, conti e debiti."
                         : page === "Storico"
                           ? "Rilevazioni e movimenti, senza perdere il filo."
-                          : "Importa i tuoi dati. I collegamenti bancari non sono ancora attivi."}
+                          : "Cerca, classifica e analizza le operazioni dei tuoi conti."}
                   </p>
                 </div>
                 <button className="primary add-desktop" onClick={add}>
@@ -789,6 +784,14 @@ function App({
                     </span>
                   </div>
                 </>
+              )}
+              {page === "Patrimonio" && (
+                <InstrumentAnalysis
+                  hidden={hidden}
+                  assets={store.assets.filter(
+                    (a) => a.category === "investment",
+                  )}
+                />
               )}
               {page === "Patrimonio" && (
                 <>
@@ -1065,145 +1068,13 @@ function App({
                   </section>
                 </>
               )}
-              {page === "Fonti" && (
-                <>
-                  <section className="card source-manual">
-                    <span className="source-icon">
-                      <BookOpen size={25} />
-                    </span>
-                    <div>
-                      <h2>Il tuo taccuino manuale</h2>
-                      <p>
-                        Saldi, stime e debiti. Li aggiorni tu, quando serve.
-                      </p>
-                      <span className="source-status">
-                        <span className="status-dot" /> Attivo · {active.length}{" "}
-                        voci ·{" "}
-                        {dateList.length
-                          ? `Ultima rilevazione ${dateLabel(dateList.at(-1)!)}`
-                          : "Nessuna rilevazione"}
-                      </span>
-                    </div>
-                    <button className="secondary" onClick={add}>
-                      Aggiungi voce <Plus size={16} />
-                    </button>
-                  </section>
-                  <section className="card import-card">
-                    <div className="section-heading">
-                      <div>
-                        <h2>Da un file, senza ricominciare</h2>
-                        <p>
-                          Importa una fotografia del patrimonio o i movimenti di
-                          un conto.
-                        </p>
-                      </div>
-                      <Upload size={24} className="muted" />
-                    </div>
-                    <div className="import-choices">
-                      <button onClick={() => setModal("import-balances")}>
-                        <FileText size={22} />
-                        <strong>Saldi o posizioni a una data</strong>
-                        <span>Aggiorna le valutazioni, non i versamenti.</span>
-                        <span className="text-button">
-                          Importa CSV <ArrowRight size={16} />
-                        </span>
-                      </button>
-                      <button onClick={() => setModal("import-movements")}>
-                        <ArrowLeftRight size={22} />
-                        <strong>Movimenti</strong>
-                        <span>
-                          Registra le operazioni senza alterare i saldi.
-                        </span>
-                        <span className="text-button">
-                          CSV / Excel Fideuram <ArrowRight size={16} />
-                        </span>
-                      </button>
-                    </div>
-                    <div className="example-links">
-                      Tracciati BauPatrimonio:{" "}
-                      <a
-                        href={
-                          import.meta.env.BASE_URL + "examples/posizioni.csv"
-                        }
-                        download
-                      >
-                        esempio posizioni <Download size={13} />
-                      </a>{" "}
-                      <a
-                        href={import.meta.env.BASE_URL + "examples/saldi.csv"}
-                        download
-                      >
-                        esempio saldi <Download size={13} />
-                      </a>
-                      <a
-                        href={
-                          import.meta.env.BASE_URL + "examples/movimenti.csv"
-                        }
-                        download
-                      >
-                        esempio movimenti <Download size={13} />
-                      </a>
-                    </div>
-                  </section>
-                  <div className="section-title">
-                    <h2>Collegamenti bancari</h2>
-                    <span className="subtle-tag">
-                      Solo lettura, quando disponibili
-                    </span>
-                  </div>
-                  {bankCoverage.map((bank, i) => (
-                    <section className="card bank-card" key={bank.name}>
-                      <span className="bank-logo">
-                        {i ? "TR" : <Landmark size={23} />}
-                      </span>
-                      <div>
-                        <h3>{bank.name}</h3>
-                        <p>
-                          {i
-                            ? "Conto e movimenti: percorso AIS documentato. Titoli non verificati."
-                            : "Conto e movimenti: percorso AIS documentato. Dossier e pensione non verificati."}
-                        </p>
-                        <small>
-                          Nessun collegamento attivo · Aggiornamento manuale o
-                          CSV disponibile
-                        </small>
-                      </div>
-                      <span className="unavailable">Non configurato</span>
-                    </section>
-                  ))}
-                  <div className="info-line">
-                    <ShieldCheck size={18} />
-                    <span>
-                      Non chiediamo password bancarie, PIN o OTP. Nessuna
-                      integrazione simulata.{" "}
-                      <button
-                        className="inline-link"
-                        onClick={() => setModal("coverage")}
-                      >
-                        Leggi copertura e limiti
-                      </button>
-                    </span>
-                  </div>
-                  {store.imports.length > 0 && (
-                    <section className="card">
-                      <div className="section-heading">
-                        <h2>Importazioni eseguite</h2>
-                      </div>
-                      {store.imports.map((i) => (
-                        <div className="import-log" key={i.id}>
-                          <FileText size={18} />
-                          <span>
-                            {i.name}
-                            <small>
-                              {dateLabel(i.date)} · {i.rows} righe · {i.kind}
-                            </small>
-                          </span>
-                          <CheckCircle2 size={17} />
-                        </div>
-                      ))}
-                    </section>
-                  )}
-                </>
+              {page === "Movimenti" && (
+                <Movements
+                  hidden={hidden}
+                  store={store}
+                  onSave={update}
+                  onImport={() => setModal("import-movements")}
+                />
               )}
               <footer className="footer">
                 <span>
@@ -1601,18 +1472,9 @@ function App({
           }}
         />
       )}
-      {modal?.startsWith("import-") && (
-        <Modal
-          title={
-            modal === "import-balances"
-              ? "Importa saldi o posizioni"
-              : "Importa movimenti"
-          }
-          onClose={close}
-          wide
-        >
-          <Importer
-            kind={modal === "import-balances" ? "balances" : "movements"}
+      {modal === "import-movements" && (
+        <Modal title="Importa movimenti" onClose={close} wide>
+          <FideuramImporter
             store={store}
             onClose={close}
             onSave={(s) => {
@@ -1635,74 +1497,6 @@ function App({
             setToast("Trasferimento registrato. Patrimonio netto invariato.");
           }}
         />
-      )}
-      {modal === "coverage" && (
-        <Modal title="Collegamenti: cosa è disponibile" onClose={close}>
-          <div className="prose">
-            <p>
-              <strong>
-                Stato al 19 novembre 2026: nessun connettore attivato.
-              </strong>
-            </p>
-            <p>
-              Verifica documentale: {coverageChecked}. Nessun conto collegato,
-              nessuna sandbox o produzione bancaria collaudata.
-            </p>
-            {bankCoverage.map((bank) => (
-              <div key={bank.name}>
-                <h3>{bank.name}</h3>
-                <p>
-                  {bank.country}. {bank.account}
-                </p>
-                <p>{bank.transactions}</p>
-                <p>{bank.securities}</p>
-                <p>
-                  <a href={bank.source} target="_blank" rel="noreferrer">
-                    Fonte ufficiale della banca
-                  </a>{" "}
-                  ·{" "}
-                  <a
-                    href={bank.providerSource}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Documentazione del provider
-                  </a>
-                </p>
-              </div>
-            ))}
-            <h3>Possibile strada gratuita per uso personale</h3>
-            <p>
-              I{" "}
-              <a href={personalProviderTerms} target="_blank" rel="noreferrer">
-                termini di Enable Banking
-              </a>{" "}
-              prevedono uso gratuito limitato ai propri conti collegati («Linked
-              Accounts»), in modalità restricted, non un servizio bancario
-              pubblico gratuito per tutti. Sono necessari un account del
-              provider, un’applicazione personale e i consensi.{" "}
-              <a
-                href={personalProviderActivation}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Procedura ufficiale
-              </a>
-              .
-            </p>
-            <p>
-              GitHub Pages ospita soltanto file statici: non può proteggere una
-              chiave privata né eseguire callback e sincronizzazioni server. Per
-              collegare i conti serve anche un backend riservato, da configurare
-              separatamente. Non inserire segreti in GitHub, nel browser o in
-              chat. Non è stato attivato alcun servizio esterno.
-            </p>
-            <div className="warning">
-              Puoi usare subito dati manuali e CSV nel formato dell’app. Non
-              sono tracciati ufficiali delle banche.
-            </div>
-          </div>
-        </Modal>
       )}
       {toast && (
         <div className="toast" role="status">

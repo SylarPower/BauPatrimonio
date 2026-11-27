@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import { suggestClassification } from "./movement-categories";
 import {
   fingerprint,
   parseNumber,
@@ -19,7 +20,13 @@ export type BankRow = {
   category: string;
   error: string;
 };
-export type BankPreview = BankRow & { id: string; doubt: boolean };
+export type BankPreview = BankRow & {
+  id: string;
+  doubt: boolean;
+  action: "new" | "update" | "unchanged" | "excluded";
+  matchId?: string;
+  reason: string;
+};
 const headers = [
   "Data",
   "Operazione",
@@ -98,6 +105,13 @@ export function parseFideuram(
     };
     try {
       result.date = dateValue(values[0]);
+      if (
+        result.operation.length > 1000 ||
+        result.account.length > 200 ||
+        result.category.length > 100 ||
+        result.status.length > 100
+      )
+        throw Error("Campo troppo lungo");
       if (!result.operation || !result.account)
         throw Error("Operazione o conto/carta mancanti");
       if (norm(result.status) !== "contabilizzato")
@@ -128,11 +142,13 @@ export function parseFideuram(
     return [result];
   });
 }
+
 export async function previewFideuram(
   rows: BankRow[],
   source: string,
   destination: string,
   store: Store,
+  mode: "merge" | "replace" = "merge",
 ): Promise<BankPreview[]> {
   const target = store.assets.find(
     (a) => a.id === destination && !a.archivedAt && a.category === "cash",
@@ -142,52 +158,111 @@ export async function previewFideuram(
   const selected = rows.filter((r) => r.account === source);
   if (!source || !selected.length)
     throw Error("Scegli un conto o una carta del file.");
-  const occurrences = new Map<string, number>();
-  const amounts = new Set<string>();
-  return Promise.all(
-    selected.map(async (r) => {
-      const key = JSON.stringify([
-        destination,
-        norm(r.account),
-        r.date,
-        r.amount,
-        r.currency,
-        norm(r.operation),
-        norm(r.details),
-      ]);
-      const occurrence = occurrences.get(key) || 0;
-      occurrences.set(key, occurrence + 1);
-      const amountKey = JSON.stringify([r.date, r.amount, r.currency]);
-      const sameAmount = amounts.has(amountKey);
-      if (!r.error) amounts.add(amountKey);
-      const id = await fingerprint("fideuram-v1|" + key + "|" + occurrence);
-      const error =
-        r.error ||
-        (store.movements.some((m) => m.id === id)
-          ? "Movimento già importato: escluso"
-          : "");
-      const doubt =
-        !error &&
-        (occurrence > 0 ||
-          sameAmount ||
+  const occurrences = new Map<string, number>(),
+    amounts = new Set<string>();
+  const output: BankPreview[] = [];
+  for (const r of selected) {
+    const key = JSON.stringify([
+      destination,
+      norm(r.account),
+      r.date,
+      r.amount,
+      r.currency,
+      norm(r.operation),
+      norm(r.details),
+    ]);
+    const occurrence = occurrences.get(key) || 0;
+    occurrences.set(key, occurrence + 1);
+    const legacyId = await fingerprint("fideuram-v1|" + key + "|" + occurrence);
+    const id = legacyId;
+    const candidates = store.movements.filter(
+      (m) => m.assetId === destination && m.id === id,
+    );
+    let error = r.error;
+    if (candidates.length > 1)
+      error =
+        "Più movimenti esistenti con la stessa identità: aggiornamento bloccato";
+    const existing = candidates[0];
+    const amountKey = JSON.stringify([r.date, r.amount, r.currency]);
+    const sameAmount = amounts.has(amountKey);
+    if (!r.error) amounts.add(amountKey);
+    const description =
+      `${r.operation}\n${r.details}\nCategoria Fideuram: ${r.category}`.trim();
+    const unchanged =
+      existing &&
+      existing.date === r.date &&
+      new Decimal(existing.amount).eq(r.amount || 0) &&
+      existing.currency === r.currency &&
+      existing.description === description;
+    const action: BankPreview["action"] = error
+      ? "excluded"
+      : existing
+        ? unchanged
+          ? "unchanged"
+          : "update"
+        : "new";
+    const doubt =
+      !error &&
+      !existing &&
+      (occurrence > 0 ||
+        sameAmount ||
+        (mode === "merge" &&
+          store.movements.some(
+            (m) =>
+              m.assetId === destination &&
+              m.bank?.account === r.account &&
+              norm(m.bank.operation) === norm(r.operation) &&
+              norm(m.bank.details) === norm(r.details),
+          )) ||
+        (mode === "merge" &&
           store.movements.some(
             (m) =>
               m.assetId === destination &&
               m.date === r.date &&
               m.currency === r.currency &&
               new Decimal(m.amount).eq(r.amount),
-          ));
-      return { ...r, id, error, doubt };
-    }),
-  );
+          )));
+    output.push({
+      ...r,
+      id,
+      error,
+      doubt,
+      action,
+      matchId: existing?.id,
+      reason: existing
+        ? "Stessi campi e contenuto della riga"
+        : doubt
+          ? "Somiglianza di data/importo o dettagli: nessun aggiornamento automatico. Se confermi sarà aggiunto un movimento distinto."
+          : "Nessuna corrispondenza certa",
+    });
+  }
+  return output;
 }
 export function fideuramMovement(
   row: BankPreview,
   destination: string,
   importId: string,
+  history: Movement[] = [],
 ): Movement {
+  const existing = history.find((m) => m.id === row.matchId);
+  const classification =
+    existing?.categoryOrigin === "manual"
+      ? {
+          category: existing.category,
+          movementKind: existing.movementKind,
+          categoryOrigin: "manual" as const,
+        }
+      : suggestClassification(
+          row.operation,
+          row.category,
+          row.amount,
+          destination,
+          history,
+          row.details,
+        );
   return {
-    id: row.id,
+    ...existing,
+    id: existing?.id || row.id,
     assetId: destination,
     date: row.date,
     amount: row.amount,
@@ -195,5 +270,48 @@ export function fideuramMovement(
     description:
       `${row.operation}\n${row.details}\nCategoria Fideuram: ${row.category}`.trim(),
     importId,
+    ...classification,
+    bank: {
+      provider: "fideuram",
+      account: row.account,
+      operation: row.operation,
+      details: row.details,
+      category: row.category,
+      status: row.status,
+    },
   };
+}
+export function applyFideuram(
+  store: Store,
+  preview: BankPreview[],
+  destination: string,
+  mode: "merge" | "replace",
+  allow: boolean,
+  importId: string,
+) {
+  const accepted = preview.filter((r) => !r.error && (!r.doubt || allow));
+  if (!accepted.length)
+    throw Error("Nessuna operazione valida. Nessun dato modificato.");
+  if (mode === "replace" && preview.some((r) => r.error || (r.doubt && !allow)))
+    throw Error(
+      "Sostituzione bloccata: risolvi tutte le righe escluse o dubbie del conto. Nessun movimento cancellato.",
+    );
+  const next = structuredClone(store);
+  if (mode === "replace")
+    next.movements = next.movements.filter((m) => m.assetId !== destination);
+  for (const row of accepted) {
+    const index = next.movements.findIndex(
+      (m) => m.id === (row.matchId || row.id),
+    );
+    if (mode === "merge" && row.action === "unchanged") continue;
+    const movement = fideuramMovement(
+      row,
+      destination,
+      importId,
+      store.movements,
+    );
+    if (index < 0) next.movements.push(movement);
+    else next.movements[index] = movement;
+  }
+  return next;
 }

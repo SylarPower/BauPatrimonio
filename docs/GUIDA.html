@@ -157,8 +157,8 @@
       <strong>Storico:</strong> consulta rilevazioni e movimenti registrati.
     </li>
     <li>
-      <strong>Fonti:</strong> importa i dati e verifica lo stato dei
-      collegamenti bancari.
+      <strong>Movimenti:</strong> cerca le operazioni, correggi le categorie e
+      consulta entrate e spese.
     </li>
   </ul>
   <p>
@@ -192,36 +192,26 @@
       sola demo.
     </li>
   </ol>
-  <h2>5. Importa file e registra operazioni</h2>
-  <ol>
-    <li>
-      Aggiungi prima la voce destinataria. Vai in
-      <strong>Fonti → Importa saldi o posizioni</strong> oppure
-      <strong>Importa movimenti</strong>.
-    </li>
-    <li>
-      Scarica uno dei tracciati di esempio dell’app:
-      <a href="examples/saldi.csv" download>saldi</a>,
-      <a href="examples/posizioni.csv" download>posizioni</a>,
-      <a href="examples/movimenti.csv" download>movimenti</a>. Non sono
-      tracciati ufficiali Fideuram o Trade Republic.
-    </li>
-    <li>
-      Abbina colonne, conto, valuta e separatore; controlla l’anteprima. Per il
-      dettaglio strumenti spunta posizioni e abbina anche nome/descrizione,
-      quantità e prezzo. Non includere righe totale insieme ai componenti.
-    </li>
-    <li>
-      I movimenti non modificano automaticamente i saldi. Per un trasferimento
-      tra due conti tuoi usa <strong>Patrimonio → Trasferisci</strong>.
-    </li>
-    <li>
-      Per un acquisto o una vendita già eseguiti, oppure per un rimborso di
-      capitale, usa <strong>Patrimonio → Registra operazione</strong>. Capitale,
-      commissioni e interessi vengono distinti. Non vengono inviati ordini o
-      pagamenti; questa procedura è limitata a posizioni EUR.
-    </li>
-  </ol>
+  <h2>5. Movimenti, categorie e operazioni</h2>
+  <p>
+    In <strong>Movimenti</strong> puoi cercare per testo/importo e filtrare
+    conto, tipo, categoria, intervallo e valuta. Totali e analisi mensili
+    seguono i filtri: non si sommano valute diverse. Trasferimenti e operazioni
+    da verificare non fanno parte di entrate e spese. I totali sono nominali,
+    non ponderati per la quota di possesso.
+  </p>
+  <p>
+    Correggi il tipo dal menu e la categoria dal campo (salvataggio quando esci
+    dal campo). Le tue correzioni prevalgono sulle categorie bancarie e possono
+    suggerire la classificazione di operazioni simili dello stesso conto. Nei
+    casi incerti l’app si astiene.
+  </p>
+  <p>
+    Non ci sono importazioni CSV di saldi, strumenti o movimenti. Saldi e
+    strumenti si aggiornano da <strong>Patrimonio</strong>. Per trasferimenti
+    tra due conti tuoi usa Trasferisci; per acquisti/vendite già eseguiti o
+    rimborsi usa Registra operazione. Non vengono inviati ordini o pagamenti.
+  </p>
   <h2>6. Usa gli stessi dati su due dispositivi</h2>
   <p>
     Apri il sito e accedi con lo stesso account sul computer e sul telefono: i
@@ -235,16 +225,16 @@
     <li>
       Crea prima una voce di categoria Liquidità per il conto di destinazione.
     </li>
-    <li>In Fonti scegli Movimenti, poi Excel Fideuram.</li>
+    <li>In Movimenti scegli Importa Excel Fideuram.</li>
     <li>Seleziona il file .xlsx della lista operazioni, fino a 2 MB.</li>
     <li>
       Scegli il conto o la carta contenuti nel file e la voce Liquidità di
       destinazione.
     </li>
     <li>
-      Apri Verifica anteprima: vengono mostrate righe valide, escluse e
-      possibili duplicati. Solo le operazioni contabilizzate con data e importo
-      validi sono importabili.
+      Apri Verifica anteprima: vengono mostrati nuovi, invariati, aggiornamenti,
+      esclusi e possibili duplicati. Solo le operazioni contabilizzate con data
+      e importo validi sono importabili.
     </li>
     <li>
       Conferma il numero di movimenti. I casi dubbi restano esclusi finché non
@@ -252,8 +242,13 @@
     </li>
   </ol>
   <p>
-    Il file è letto nel browser e non viene conservato. L’importazione aggiunge
-    movimenti al registro ma
+    Il file è letto nel browser e non viene conservato. Aggiungi e aggiorna
+    mantiene gli altri movimenti; la categoria bancaria può cambiare senza
+    duplicare una riga identica. Le tue categorie corrette restano prioritarie.
+    Sostituisci elimina TUTTI i movimenti della sola voce scelta (anche manuali
+    e fuori periodo), non degli altri conti. Devi scrivere il nome della voce.
+    Righe escluse o dubbi non confermati bloccano la sostituzione. Non c’è
+    annullamento automatico. Nessuna modalità
     <strong>non cambia i saldi o il rendimento</strong>. Per aggiornare il
     patrimonio registra separatamente una rilevazione. Bonifici e ricariche
     potrebbero essere trasferimenti tra tuoi conti, non spese o guadagni: non
@@ -369,39 +364,28 @@
     impediscono il risultato o la percentuale. L’app non inventa un rendimento
     da una semplice differenza di valore.
   </p>
-  <h2>7. Banche: cosa è stato verificato</h2>
+  <h2>7. Prezzi di azioni ed ETF</h2>
   <p>
-    Verifica delle fonti ufficiali: 19 novembre 2026. Fideuram dispone di un
-    percorso PSD2 tramite CBI Globe; Trade Republic documenta un’API AIS per
-    conti, saldi e movimenti. Enable Banking documenta Fideuram in Italia e
-    Trade Republic anche per clienti italiani. Queste evidenze non certificano
-    un conto specifico né il funzionamento dell’integrazione nell’app: nessun
-    connettore è attivo o collaudato.
+    In Patrimonio trovi Azioni ed ETF · prezzi. Scegli uno strumento registrato
+    nel dettaglio dei tuoi dossier per vedere prezzi, date, fonti e grafico
+    personali, separati per valuta. La variazione del prezzo non è un
+    rendimento: non include dividendi, versamenti o cambi. I punti sono
+    equidistanti per rilevazione, non interpolazioni giornaliere.
   </p>
   <p>
-    I
-    <a href="https://enablebanking.com/terms/" target="_blank" rel="noreferrer"
-      >termini di Enable Banking</a
-    >
-    consentono l’uso gratuito personale, limitato ai propri conti collegati in
-    modalità restricted. Occorrono registrazione, applicazione personale, chiave
-    privata e consensi sul sito della banca/provider. Non inserire tali chiavi
-    nel sito, nel repository o in chat.
+    Apri Prezzi e grafici online · TradingView e inserisci BORSA:SIMBOLO
+    (esempio NASDAQ:AAPL). Verifica sempre identità, borsa e valuta: l’ISIN non
+    viene abbinato automaticamente. Carica grafico online contatta il fornitore
+    solo su tua richiesta: riceve IP e simbolo scelto, mai quantità, saldi o
+    operazioni. Il widget è isolato dall’archivio. Puoi chiuderlo o aprire il
+    collegamento esterno se il servizio non risponde. Copertura e ritardi sono
+    indicati dal fornitore, non garantiti dall’app.
   </p>
   <p>
-    <strong>GitHub Pages da solo non è un backend bancario.</strong> Per
-    automatizzare l’accesso servirebbe un servizio server riservato aggiuntivo.
-    Non è stato attivato. L’archivio Firebase descritto sopra salva i tuoi dati,
-    ma non implementa ancora il connettore bancario. Le posizioni titoli, ETF e
-    previdenza non risultano coperte dalle API AIS consultate. Restano
-    disponibili subito manuale e CSV. Il dettaglio di fonti e limiti è nella
-    sezione Fonti dell’app.
-  </p>
-  <p>
-    La valuta di riferimento resta EUR. Non sono presenti quotazioni live,
-    import PDF, Excel generico o sincronizzazione realtime. Il sito online non
-    implica da solo che i dati siano salvati online: occorre accedere
-    all’account e attendere lo stato «Salvato online».
+    Nessun prezzo online modifica il patrimonio. Non ci sono collegamenti
+    bancari: non inserire password, PIN o OTP della banca. L’unico import è
+    Excel Fideuram; i dati personali sono salvati online solo dopo accesso e
+    stato Salvato online.
   </p>
   <footer>
     La pubblicazione del codice e della demo non pubblica i tuoi dati. Non sono
