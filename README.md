@@ -46,7 +46,7 @@ Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa f
 
 - **Panoramica**: totale e grafici; filtro Tutto il patrimonio / Investimenti. Prima i grafici, poi il rendimento degli investimenti. «Confronto e qualità dei dati» resta chiuso finché serve.
 - **Patrimonio**: gestione delle voci e delle operazioni già eseguite.
-- **Storico**: consultazione di rilevazioni e movimenti.
+- **Storico**: valutazioni del patrimonio e confronto tra date, senza duplicare le operazioni di Movimenti.
 - **Movimenti**: registro ricercabile, categorie, entrate e spese; importazione Excel Fideuram.
 
 Il Profilo raccoglie aspetto, accesso e gestione/esportazione dei dati personali. Nessun export dei grafici o nuovo livello di navigazione.
@@ -111,7 +111,7 @@ Per provare tutte le viste: demo → **Prova i grafici con sei mesi di storico d
 - **Sostituisci**: elimina TUTTI i movimenti della sola voce di destinazione, inclusi manuali e fuori periodo, e carica quelli del conto/carta selezionato nel file. Occorre scrivere il nome della voce. Righe escluse o dubbi non confermati bloccano l’intera sostituzione: nessuna cancellazione parziale. Nessun annullamento automatico.
 - Solo operazioni contabilizzate e date/importi/valute validi. Nessuno zero inventato. Importi firmati dalla colonna, non dal testo dei pagamenti esteri. Movimenti non cambiano saldi, valutazioni, cambi o flussi di rendimento.
 - Ricerca, conto, tipo, categoria, intervallo e valuta; pagine da 40 movimenti. Entrate, spese nette, differenza, categorie e mesi seguono tutti i filtri. Importi nominali separati per valuta, non ponderati per possesso.
-- Categorie iniziali della banca, suggerimenti dalle correzioni manuali dello stesso conto con parole intere e maggioranza di almeno 2/3; astensione nei casi incerti (ispirato a BauSplit). Bonifici/ricariche restano da verificare; trasferimenti e righe da verificare sono esclusi da entrate/spese. Tipo e categoria si correggono nel registro; la categoria si salva uscendo dal campo.
+- Categorie iniziali della banca, suggerimenti dalle correzioni manuali dello stesso conto con parole intere e maggioranza di almeno 2/3; astensione nei casi incerti (ispirato a BauSplit). Bonifici/ricariche restano da verificare; trasferimenti e righe da verificare sono esclusi da entrate/spese. Tipo e categoria si correggono nel registro; la categoria si sceglie da un menu a discesa e si salva subito.
 
 ## Azioni ed ETF: mercato e prezzi personali
 
@@ -173,3 +173,9 @@ supabase/                 schema storico, non modificato e non usato dal client
 Signup crea l’account Firebase e richiede la verifica email, senza aprire un archivio; un errore di invio avvisa che l’account è già stato creato e suggerisce reinvio, non una seconda registrazione. Il reinvio richiede email e password, come previsto dall’API Firebase; non conserva token o password. Login verifica l’indirizzo con Firebase prima di leggere Firestore; le regole impongono nuovamente lo stesso requisito.
 
 Le email possono usare il gestore Firebase predefinito: conferma o cambio password avvengono su `baupatrimonio-b99c3.firebaseapp.com`, poi il link Continua torna al sito. Non è necessario un gestore personalizzato. Se si sceglie di configurare il sito come gestore personalizzato, sono supportati `mode=verifyEmail` e `mode=resetPassword` con codice monouso rimosso dall’URL e tenuto solo in memoria; il codice viene validato da Firebase, mai convertito in una sessione del patrimonio. Dopo il recupero si accede con la nuova password. Pausa locale invii 60 secondi; quote e controlli anti-abuso Firebase restano validi.
+
+## Consultazione rapida: insight e strumenti
+
+Movimenti include ripartizione delle spese nette per categoria (barre/anello) e andamento mensile entrate/spese con tabella accessibile. I grafici seguono tutti i filtri e rispettano privacy e valuta; trasferimenti/da verificare sono esclusi. Seleziona una categoria nel grafico per filtrare il registro, Azzera filtri per tornare a tutte. L’anello considera solo le categorie con spesa netta positiva: rimborsi netti e zeri restano elencati senza percentuali; nessun mese mancante è inventato come zero. Le barre mensili usano le grandezze assolute, con segni e valori nella tabella. È un adattamento dei pattern di BauSplit, non un’analisi delle quote tra persone.
+
+Il menu categorie offre un catalogo iniziale insieme a tutte le etichette della banca e storiche, senza rinominarle automaticamente. In Patrimonio, **ETF e azioni** porta direttamente agli strumenti: ogni scheda mostra quantità, prezzo, valuta e data. Un clic apre lo storico personale dello strumento nel dossier corretto; Gestisci strumenti apre direttamente l’editor. Il totale degli strumenti non viene aggiunto una seconda volta al dossier.

@@ -171,14 +171,12 @@ async function previewFile(
   category = "Entrate",
 ) {
   await open(page);
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "sintetico.xlsx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer: await workbook(category),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "sintetico.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: await workbook(category),
+  });
   await page.getByLabel("Conto o carta nel file").selectOption(source);
   await page.getByLabel("Voce di destinazione").selectOption({ label: target });
   if (replace) await page.getByLabel("Come importare").selectOption("replace");
@@ -237,8 +235,8 @@ test("aggiornamento certo conserva categoria manuale; filtri e privacy seguono i
     .locator(".movement-row")
     .filter({ hasText: "Accredito esempio" });
   await credit
-    .getByRole("textbox", { name: "Categoria", exact: true })
-    .fill("Reddito personale");
+    .getByRole("combobox", { name: "Categoria del movimento", exact: true })
+    .selectOption("Stipendio e pensione");
   await page.getByRole("heading", { name: "2 movimenti", exact: true }).click();
   await previewFile(
     page,
@@ -250,8 +248,11 @@ test("aggiornamento certo conserva categoria manuale; filtri e privacy seguono i
   await expect(page.locator(".import-stats")).toContainText("1 da aggiornare");
   await page.getByRole("button", { name: "Conferma 1 movimenti" }).click();
   await expect(
-    credit.getByRole("textbox", { name: "Categoria", exact: true }),
-  ).toHaveValue("Reddito personale");
+    credit.getByRole("combobox", {
+      name: "Categoria del movimento",
+      exact: true,
+    }),
+  ).toHaveValue("Stipendio e pensione");
   await page
     .getByRole("textbox", { name: "Cerca", exact: true })
     .fill("Accredito");

@@ -1,3 +1,5 @@
+import MovementInsights from "./MovementInsights";
+import { movementCatalog } from "./movement-catalog";
 import { useState } from "react";
 import type { Store } from "./model";
 import {
@@ -41,6 +43,7 @@ export default function Movements({
         ).includes(normalizeText(search)),
     )
     .sort((a, b) => b.date.localeCompare(a.date));
+  const catalog = movementCatalog(store.movements);
   const summary = movementSummary(filtered),
     format = (n: { toString: () => string }) =>
       hidden
@@ -196,20 +199,16 @@ export default function Movements({
           Importi nominali, non ponderati per quota di possesso. Nessuna
           conversione tra valute.
         </p>
-        <details>
-          <summary>Spese per categoria e andamento mensile</summary>
-          {summary.categories.map(([c, n]) => (
-            <p key={c}>
-              {c}: <strong>{format(n)}</strong>
-            </p>
-          ))}
-          {summary.months.map(([month, s]) => (
-            <p key={month}>
-              {month} · Entrate {format(s.income)} · Spese {format(s.expense)}
-            </p>
-          ))}
-        </details>
       </section>
+      <MovementInsights
+        movements={filtered}
+        hidden={hidden}
+        currency={currency}
+        onCategory={(c) => {
+          setCategory(c);
+          setPage(0);
+        }}
+      />
       <section className="card content-card movement-register">
         <h2>{filtered.length} movimenti</h2>
         <p>
@@ -257,22 +256,15 @@ export default function Movements({
             </label>
             <label>
               Categoria
-              <input
-                key={m.id + categoryOf(m)}
-                maxLength={100}
-                defaultValue={categoryOf(m)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                onBlur={(e) => {
-                  if (
-                    e.target.value.trim() &&
-                    e.target.value.trim() !== categoryOf(m)
-                  )
-                    change(m.id, { category: e.target.value.trim() });
-                  else e.target.value = categoryOf(m);
-                }}
-              />
+              <select
+                aria-label="Categoria del movimento"
+                value={categoryOf(m)}
+                onChange={(e) => change(m.id, { category: e.target.value })}
+              >
+                {catalog.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
             </label>
           </article>
         ))}
@@ -302,6 +294,16 @@ export default function Movements({
           </button>
         </div>
       </section>
+      {store.imports.length > 0 && (
+        <details className="card content-card movement-import-log">
+          <summary>Registro importazioni · {store.imports.length}</summary>
+          {[...store.imports].reverse().map((i) => (
+            <p key={i.id}>
+              {i.date} · {i.name} · {i.rows} righe · {i.kind}
+            </p>
+          ))}
+        </details>
+      )}
     </>
   );
 }

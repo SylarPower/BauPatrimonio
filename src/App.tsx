@@ -25,7 +25,6 @@ import {
   Eye,
   EyeOff,
   Download,
-  Upload,
   FileText,
   ShieldCheck,
   X,
@@ -662,7 +661,7 @@ function App({
                       : page === "Patrimonio"
                         ? "Aggiungi e aggiorna beni, investimenti, conti e debiti."
                         : page === "Storico"
-                          ? "Rilevazioni e movimenti, senza perdere il filo."
+                          ? "Valutazioni e confronti nel tempo. Le operazioni sono in Movimenti."
                           : "Cerca, classifica e analizza le operazioni dei tuoi conti."}
                   </p>
                 </div>
@@ -790,6 +789,19 @@ function App({
                   <div className="toolbar">
                     <button
                       className="secondary"
+                      onClick={() => {
+                        const target = document.getElementById("instruments");
+                        target?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                        target?.focus({ preventScroll: true });
+                      }}
+                    >
+                      ETF e azioni
+                    </button>
+                    <button
+                      className="secondary"
                       onClick={() => setModal("operation")}
                     >
                       <FileText size={16} /> Registra operazione
@@ -881,6 +893,10 @@ function App({
                         .includes(query.toLowerCase()),
                     ) && <p>Nessuna voce corrisponde alla ricerca.</p>}
                   <InstrumentAnalysis
+                    onManage={(a) => {
+                      setSelected(a);
+                      setModal("portfolio");
+                    }}
                     hidden={hidden}
                     assets={store.assets.filter(
                       (a) => a.category === "investment",
@@ -997,7 +1013,7 @@ function App({
                   </div>
                   <section className="card">
                     <div className="section-heading">
-                      <h2>Il tuo registro</h2>
+                      <h2>Rilevazioni del patrimonio</h2>
                       <span className="subtle-tag">
                         Dati originali conservati
                       </span>
@@ -1015,39 +1031,13 @@ function App({
                             kind: "Rilevazione",
                           })),
                         ),
-                        ...store.movements.map((m) => ({
-                          id: m.id,
-                          date: m.date,
-                          title: m.description,
-                          description:
-                            store.assets.find((a) => a.id === m.assetId)
-                              ?.name || "",
-                          amount: Number(m.amount),
-                          currency: m.currency,
-                          kind: "Movimento",
-                        })),
-                        ...store.imports.map((i) => ({
-                          id: i.id,
-                          date: i.date,
-                          title: i.name,
-                          description: `${i.rows} righe · ${i.kind}`,
-                          amount: null,
-                          currency: "EUR",
-                          kind: "Importazione",
-                        })),
                       ]
                         .filter((e) => e.date <= asOf)
                         .sort((a, b) => b.date.localeCompare(a.date))
                         .map((e) => (
                           <div className="timeline-row" key={e.id}>
                             <span className="timeline-icon">
-                              {e.kind === "Importazione" ? (
-                                <Upload size={17} />
-                              ) : e.kind === "Movimento" ? (
-                                <ArrowLeftRight size={17} />
-                              ) : (
-                                <Clock3 size={17} />
-                              )}
+                              <Clock3 size={17} />
                             </span>
                             <div>
                               <small>
