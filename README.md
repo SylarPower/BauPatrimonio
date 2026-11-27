@@ -38,7 +38,7 @@ Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa f
 - Rilevazioni datate/versionate, originali e cambi verso EUR con fonte/data, storico, confronti per data, archiviazione senza cancellare il passato.
 - Dossier aggregato oppure strumenti con ISIN facoltativo, quantità e prezzi decimali, fonte/data. Conferma di riconciliazione: il dettaglio **sostituisce** l'aggregato.
 - Registrazione contabile di trasferimenti, acquisti/vendite **già eseguiti** e rimborsi capitale, con costi/interessi separati e applicazione della quota del dossier/debito. Operazioni abbinate limitate a EUR, con conto di liquidità al 100%.
-- CSV saldi, posizioni e movimenti con mapping, separatori, importi/date italiani, anteprima, errori, duplicati e conferma dei casi ambigui. Gli strumenti sono conservati se sono abbinate descrizione/nome, quantità e prezzo; senza questi campi si conserva il totale per data.
+- Importazione Excel Fideuram con anteprima, aggiunta/aggiornamento e sostituzione limitata al conto scelto.
 - Privacy visiva, CSV riepilogo, backup/ripristino JSON validato, eliminazione con conferma testuale.
 - PWA con manifest/icone e precache versionata di soli file statici. Nessuna risposta finanziaria privata, file importato o token nel service worker.
 
@@ -47,7 +47,7 @@ Il modello Actions in `docs/pages-workflow.yml.example` resta un’alternativa f
 - **Panoramica**: totale e grafici; filtro Tutto il patrimonio / Investimenti. Prima i grafici, poi il rendimento degli investimenti. «Confronto e qualità dei dati» resta chiuso finché serve.
 - **Patrimonio**: gestione delle voci e delle operazioni già eseguite.
 - **Storico**: consultazione di rilevazioni e movimenti.
-- **Fonti**: importazione e stato dei collegamenti bancari, senza fingere connessioni attive.
+- **Movimenti**: registro ricercabile, categorie, entrate e spese; importazione Excel Fideuram.
 
 Il Profilo raccoglie aspetto, accesso e gestione/esportazione dei dati personali. Nessun export dei grafici o nuovo livello di navigazione.
 
@@ -94,43 +94,30 @@ Per provare tutte le viste: demo → **Prova i grafici con sei mesi di storico d
 - Importi, quantità e cambi sono stringhe decimali, calcoli con Decimal.js a precisione 40. Conversioni conservano il verso **EUR per 1 unità originale**, data e fonte. Un cambio non può avere data successiva alla rilevazione.
 - Senza valore/cambio: **Totale parziale**, voci mancanti elencate. Prima della prima rilevazione non si assume zero.
 - Archiviare una voce termina il contributo da quella data, non cancella lo storico e non inventa la liquidità di una vendita.
-- Movimenti CSV non modificano automaticamente le valutazioni. Un saldo non è un versamento. Contributi pensionistici, TFR, disponibilità e prezzo d'acquisto sono informativi, non attività aggiuntive.
+- Movimenti importati non modificano automaticamente le valutazioni. Un saldo non è un versamento. Contributi pensionistici, TFR, disponibilità e prezzo d'acquisto sono informativi, non attività aggiuntive.
 - Il dettaglio di un dossier riconcilia il suo aggregato. Il raggruppamento per istituto non scopre se l'utente registra due volte lo stesso bene in voci diverse: non aggiungere «broker totale» insieme alle sue sottovoci.
 - **Riferimento EUR** in questa versione; originali EUR/USD/GBP/CHF/JPY/CAD con cambio manuale. Non ancora selezionabile una diversa valuta di riferimento.
 - Nessun rendimento TWR/IRR, prezzo/cambio live, attribuzione automatica separata di mercato/cambi/flussi, PDF/XLSX, piano di ammortamento, rate automatiche o pagamenti/ordini. I collegamenti tra beni e finanziamenti sono informativi.
 - Strumenti nella stessa valuta del dossier; una registrazione contabile di acquisto/vendita crea una nuova rilevazione aggregata. Riconcilia il dettaglio strumenti se lo aggiorni in seguito.
 
-## File CSV e idempotenza
+## Movimenti ed Excel Fideuram
 
-Esempi in `public/examples/`, scaricabili da Fonti e dalla guida. **Sono tracciati BauPatrimonio, non formati ufficiali delle banche.**
+**Movimenti → Importa Excel Fideuram** è l’unico importatore di operazioni. Non ci sono import CSV di saldi/posizioni/movimenti né sezioni di collegamento bancario. Saldi e strumenti si registrano da Patrimonio; il ripristino JSON completo resta nel Profilo.
 
-- Crea prima la voce destinataria; scegli saldi/posizioni oppure movimenti.
-- File UTF-8 fino a 2 MB, data `AAAA-MM-GG` o `GG/MM/AAAA`, importi `1.234,56` oppure `1234.56`, valuta opzionale EUR. Con separatore virgola, racchiudi normalmente i decimali con virgola tra virgolette CSV. Un punto isolato è decimale, non separatore delle migliaia.
-- Per i debiti usa capitale residuo positivo; un conto scoperto va rappresentato come passività. Le posizioni vanno in una voce Investimenti; non includere totali insieme ai componenti.
-- Se mappi quantità e prezzo, `quantità × prezzo` deve riconciliare l'eventuale importo della riga entro mezzo centesimo; altrimenti la riga è esclusa. Valute diverse nello stesso gruppo/data non vengono sommate senza cambio.
-- Lo stesso contenuto/conto/percorso è riconosciuto con SHA-256. Con ID operazione, identità conto + percorso + ID, anche su file diversi.
-- Senza ID, identità file + numero riga. Due operazioni legittime con stessa data/importo **non** vengono collassate; i casi dubbi sono esclusi finché l'utente non conferma esplicitamente che sono distinti.
-- Rilevazioni già presenti alla stessa data non vengono sovrascritte dal CSV. Aggiornale dal dettaglio con una nuova versione consapevole.
-- Non è una deduplicazione bancaria universale: file modificati arbitrariamente o esportazioni parzialmente sovrapposte richiedono verifica dell'anteprima. Il file originale non viene conservato, solo dati confermati e registro importazione.
-- Valuta estera senza cambio → totale parziale; registra dal dettaglio la valutazione con il cambio pertinente.
+- `.xlsx` lista operazioni, massimo 2 MB, ZIP espanso massimo 12 MB/200 elementi e 10.000 righe. Parsing locale, nessuna macro/formula eseguita, nessun originale conservato. Colonne Data, Operazione, Dettagli, Conto o carta, Contabilizzazione, Categoria, Valuta, Importo. Struttura desunta dall’esempio privato: nessun dato personale nei test o nel repository.
+- Scegli un conto/carta nel file e una voce Liquidità attiva di destinazione. Ogni sorgente si importa separatamente; attenzione alla sovrapposizione tra carta e conto.
+- **Aggiungi e aggiorna**: anteprima nuovi, invariati, aggiornamenti certi, esclusi e possibili duplicati. Identità composta da destinazione, conto sorgente, data, importo, valuta, operazione, dettagli e occorrenza. La categoria della banca non fa parte dell’identità: può essere aggiornata senza duplicare. Le correzioni manuali restano prioritarie.
+- Non c’è un ID transazione verificato nel file. Numeri nel testo, mandati e descrizione da sola NON sono identificatori. Modifiche a data/importo/dettagli non autorizzano sovrascritture: le somiglianze segnalate richiedono verifica e l’eventuale conferma aggiunge un’operazione distinta. Non è una deduplicazione bancaria universale.
+- **Sostituisci**: elimina TUTTI i movimenti della sola voce di destinazione, inclusi manuali e fuori periodo, e carica quelli del conto/carta selezionato nel file. Occorre scrivere il nome della voce. Righe escluse o dubbi non confermati bloccano l’intera sostituzione: nessuna cancellazione parziale. Nessun annullamento automatico.
+- Solo operazioni contabilizzate e date/importi/valute validi. Nessuno zero inventato. Importi firmati dalla colonna, non dal testo dei pagamenti esteri. Movimenti non cambiano saldi, valutazioni, cambi o flussi di rendimento.
+- Ricerca, conto, tipo, categoria, intervallo e valuta; pagine da 40 movimenti. Entrate, spese nette, differenza, categorie e mesi seguono tutti i filtri. Importi nominali separati per valuta, non ponderati per possesso.
+- Categorie iniziali della banca, suggerimenti dalle correzioni manuali dello stesso conto con parole intere e maggioranza di almeno 2/3; astensione nei casi incerti (ispirato a BauSplit). Bonifici/ricariche restano da verificare; trasferimenti e righe da verificare sono esclusi da entrate/spese. Tipo e categoria si correggono nel registro; la categoria si salva uscendo dal campo.
 
-## Excel Fideuram — lista operazioni
+## Azioni ed ETF: mercato e prezzi personali
 
-In **Fonti → Movimenti → Excel Fideuram** seleziona un export `.xlsx` della lista operazioni (non `.xls`, PDF o un riepilogo titoli). Vengono riconosciuti il preambolo e le colonne **Data, Operazione, Dettagli, Conto o carta, Contabilizzazione, Categoria, Valuta, Importo**; nessuna colonna del preambolo viene interpretata come movimento. Il formato è stato ricavato dalla struttura dell’esempio privato fornito su Drive: l’originale e i dati personali non sono nel repository o nei test.
+In **Patrimonio → Azioni ed ETF · prezzi** scegli uno strumento dei dossier registrati. La serie personale mostra prezzi unitari, data, valuta e fonte, grafico e variazione primo/ultimo prezzo nella medesima valuta. I punti del grafico sono equidistanti per rilevazione; non è una serie giornaliera né un rendimento, e non include dividendi, flussi o cambi. Nessuna conversione o dato mancante inventato.
 
-Scegli esplicitamente un conto/carta del file e una voce **Liquidità** attiva di destinazione; conferma dopo l’anteprima. Ogni conto/carta va importato separatamente. Non è un connettore bancario e non richiede credenziali Fideuram.
-
-- File fino a 2 MB, limite di espansione ZIP 12 MB/200 elementi e massimo 10.000 righe; parser XLSX caricato solo all’uso, nessuna macro eseguita o formula calcolata. File protetti o non riconosciuti vengono rifiutati.
-- Importi con segno e valuta della colonna (non quelli citati nei dettagli di pagamenti esteri); celle numeriche lette come stringhe decimali. Date Excel o date italiane; righe future/impossibili, stati diversi da CONTABILIZZATO e campi obbligatori mancanti sono esclusi con motivo. Nessuno zero inventato.
-- Le operazioni già importate sono riconosciute con impronta dei campi contabili e descrittivi, indipendente da nome file/ordine; copie identiche nella stessa esportazione hanno ID distinti ma richiedono conferma. Possibili duplicati con stessa data/importo nel file o nel registro restano esclusi fino alla conferma esplicita. Non si assume che un numero mandato sia un ID transazione.
-- Si conservano operazione, dettagli e categoria originale nella descrizione. Non vengono aggiornati saldi, valutazioni, cambi o flussi di rendimento; bonifici, giroconti e ricariche non diventano guadagni/perdite automatici. Le operazioni di carta e conto possono sovrapporsi: scegli consapevolmente il conto corretto, nessun abbinamento automatico.
-- Parsing nel browser; l’originale non viene inviato o conservato. Solo i movimenti scelti e il registro importazione passano al normale salvataggio dell’archivio dopo conferma. Restano validi i limiti dell’archivio Firestore e la protezione dai conflitti.
-
-## Banche e sandbox: stato effettivo
-
-**Nessun connettore bancario è attivo o testato in sandbox.** Verifica documentale aggiornata al 19 novembre 2026: Fideuram dispone di un percorso AIS tramite CBI Globe ed è citata nella documentazione Enable Banking per l’Italia. Trade Republic documenta conti, saldi e movimenti e il provider include clienti italiani; i movimenti risultano limitati a importo, valuta e data, senza descrizioni. **Le posizioni titoli/ETF e la previdenza non risultano coperte dalle API AIS consultate.**
-
-I termini Enable Banking prevedono uso gratuito personale limitato ai propri Linked Accounts, modalità restricted. Richiede registrazione personale, app, consensi e un backend riservato per la chiave privata: GitHub Pages da solo non può sincronizzare le banche. Non sono stati attivati conti o servizi, accettati contratti o acquistati abbonamenti. Fonti, limiti, condizioni e passi mancanti in [`docs/COLLEGAMENTI.md`](docs/COLLEGAMENTI.md), anche nell’interfaccia Fonti.
+Il grafico online usa il [widget ufficiale TradingView](https://www.tradingview.com/widget-docs/widgets/charts/legacy-advanced-chart/) in un iframe sandbox senza accesso al documento/app/archivio, solo dopo **Carica grafico online**. Inserisci BORSA:SIMBOLO (es. NASDAQ:AAPL), verifica identità, borsa e valuta: l’ISIN non viene associato automaticamente. Sono disponibili ricerca e storico del fornitore; copertura, ritardi e disponibilità dipendono dal mercato. Nessuna chiave API o servizio a pagamento configurato. Il fornitore riceve IP e simbolo scelto, mai saldi, quantità o operazioni. Chiusura rimuove il widget; collegamento esterno sempre disponibile. Nessuna quotazione aggiorna il patrimonio o viene salvata nell’archivio/cache applicativa. Le reti esterne possono essere bloccate da browser o policy: non si dichiara il caricamento del frame come prova di disponibilità dei dati.
 
 ## Architettura e riservatezza
 
@@ -170,7 +157,9 @@ src/model.ts              rilevazioni, precisione, quote, demo e trasferimenti
 src/insights-model.ts      serie temporali, composizione, confronto e qualità
 src/Insights.tsx           visualizzazioni accessibili e formati alternativi
 src/operations.ts          registrazioni abbinate, capitale e costi/interessi
-src/Importer.tsx           CSV e strumenti con riconciliazione
+src/FideuramImporter.tsx   Excel, anteprima, aggiunta e sostituzione
+src/Movements.tsx          registro e analisi entrate/spese
+src/InstrumentAnalysis.tsx prezzi personali e widget di mercato
 src/Portfolio.tsx          strumenti manuali e riconciliazione dossier
 src/validation.ts          validazione backup
 public/GUIDA.html          istruzioni utente offline

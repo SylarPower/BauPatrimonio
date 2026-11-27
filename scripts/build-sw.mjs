@@ -9,9 +9,6 @@ if (!/^\/(?:[a-zA-Z0-9_.-]+\/)*$/.test(base))
 const staticPaths = [
   "/index.html",
   "/GUIDA.html",
-  "/examples/saldi.csv",
-  "/examples/posizioni.csv",
-  "/examples/movimenti.csv",
   "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",

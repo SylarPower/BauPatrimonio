@@ -154,47 +154,58 @@ test("valore non disponibile resta mancante, non zero", async ({ page }) => {
   await expect(page.locator(".asset-row")).toContainText("Non disponibile");
 });
 
-test("importa strumenti con quantità e prezzo e preserva il totale del dossier", async ({
+test("nessun import CSV: strumenti manuali e prezzi separati dal patrimonio", async ({
   page,
 }) => {
   await page.goto("/");
-  await mockCloud(page);
-  await page.getByRole("button", { name: "Accedi o crea account" }).click();
-  await signIn(page);
-  await page.getByRole("button", { name: "Aggiungi la prima voce" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Investimenti", exact: false })
-    .click();
-  await page.getByLabel("Nome della voce").fill("Dossier importato");
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Salva", exact: true }).click();
+  await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
   await page
     .locator(".desktop-nav")
-    .getByRole("button", { name: "Fonti", exact: true })
+    .getByRole("button", { name: "Patrimonio", exact: true })
     .click();
-  await page.locator(".import-choices>button").first().click();
-  await page.locator("input[type=file]").setInputFiles({
-    name: "posizioni.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(
-      "data;descrizione;quantita;prezzo;valuta;importo\n2026-11-01;ETF A;40;100,00;EUR;4000,00\n2026-11-01;ETF B;20;200,00;EUR;4000,00",
-    ),
-  });
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Verifica anteprima" }).click();
-  await expect(page.locator(".import-stats")).toContainText("2 valide");
-  await page.getByRole("button", { name: "Conferma 2 righe" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Azioni ed ETF · prezzi" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Apri prezzi e storico/ }),
+  ).toHaveCount(0);
   await page
-    .locator(".desktop-nav")
-    .getByRole("button", { name: "Panoramica", exact: true })
+    .getByText("Prezzi e grafici online · TradingView", { exact: true })
     .click();
-  await expect(page.locator(".net-amount")).toContainText("8.000,00");
-  await page.locator(".asset-row").click();
-  await expect(page.locator(".position-summary")).toHaveCount(2);
-  await expect(page.locator(".position-summary").first()).toContainText(
-    "ETF A",
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await page.getByLabel("Simbolo e borsa", { exact: true }).fill("NASDAQ:AAPL");
+  await page.route("https://s3.tradingview.com/**", (r) =>
+    r.fulfill({ contentType: "application/javascript", body: "" }),
   );
+  await page.getByRole("button", { name: "Carica grafico online" }).click();
+  await expect(
+    page.getByTitle("Prezzi e storico di mercato TradingView"),
+  ).toBeVisible();
+  await expect(
+    page.getByTitle("Prezzi e storico di mercato TradingView"),
+  ).toHaveAttribute(
+    "sandbox",
+    "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+  );
+  await page.getByRole("button", { name: "Chiudi grafico online" }).click();
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await page
+    .locator(".desktop-nav")
+    .getByRole("button", { name: "Movimenti", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Importa Excel Fideuram" }).click();
+  await expect(page.locator("input[type=file]")).toHaveAttribute(
+    "accept",
+    /xlsx/,
+  );
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "vecchio.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("data;importo"),
+    });
+  await expect(page.getByRole("alert")).toContainText("Scegli un file .xlsx");
 });
 
 test("rimborso con interessi registra solo la perdita per interessi", async ({

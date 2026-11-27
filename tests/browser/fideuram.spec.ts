@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import writeXlsxFile from "write-excel-file/node";
-async function workbook() {
+async function workbook(category = "Entrate") {
   const rows: unknown[][] = [
     [null, "Conti e carte:", "Esempio sintetico"],
     [null, "I movimenti selezionati sono:", 4],
@@ -30,7 +30,7 @@ async function workbook() {
       "Esempio",
       "Conto TEST",
       "CONTABILIZZATO",
-      "Entrate",
+      category,
       "EUR",
       250.45,
     ],
@@ -71,9 +71,8 @@ async function workbook() {
   ).toBuffer();
 }
 async function open(page: Page) {
-  await page.locator(".import-choices>button").nth(1).click();
   await page
-    .getByRole("button", { name: "Excel Fideuram", exact: true })
+    .getByRole("button", { name: "Importa Excel Fideuram", exact: true })
     .click();
 }
 for (const width of [320, 1440])
@@ -94,7 +93,7 @@ for (const width of [320, 1440])
       .getByRole("button", { name: "Prova con dati di esempio" })
       .click();
     const nav = page.locator(width < 700 ? ".mobile-nav" : ".desktop-nav");
-    await nav.getByRole("button", { name: "Fonti", exact: true }).click();
+    await nav.getByRole("button", { name: "Movimenti", exact: true }).click();
     const file = {
       name: "esempio-fideuram.xlsx",
       mimeType:
@@ -115,7 +114,7 @@ for (const width of [320, 1440])
         .selectOption({ label: "Conto corrente" });
       await page.getByRole("button", { name: "Verifica anteprima" }).click();
       await expect(page.locator(".import-stats")).toContainText(
-        i === 0 ? "2 valide" : "0 valide",
+        i === 0 ? "2 nuovi" : "2 invariati",
       );
       await expect(page.locator(".preview-scroll")).toContainText(
         "non contabilizzato",
@@ -131,7 +130,7 @@ for (const width of [320, 1440])
           .click();
       else {
         await expect(page.locator(".preview-scroll")).toContainText(
-          "già importato",
+          "Invariato",
         );
         await expect(
           page.getByRole("button", { name: "Conferma 0 movimenti" }),
@@ -150,7 +149,7 @@ test("file Excel non valido non lascia anteprime o importazioni", async ({
   await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
   await page
     .locator(".desktop-nav")
-    .getByRole("button", { name: "Fonti" })
+    .getByRole("button", { name: "Movimenti" })
     .click();
   await open(page);
   await page.locator("input[type=file]").setInputFiles({
@@ -162,4 +161,103 @@ test("file Excel non valido non lascia anteprime o importazioni", async ({
   await expect(
     page.getByRole("button", { name: "Verifica anteprima" }),
   ).toBeDisabled();
+});
+
+async function previewFile(
+  page: Page,
+  source: string,
+  target: string,
+  replace = false,
+  category = "Entrate",
+) {
+  await open(page);
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "sintetico.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer: await workbook(category),
+    });
+  await page.getByLabel("Conto o carta nel file").selectOption(source);
+  await page.getByLabel("Voce di destinazione").selectOption({ label: target });
+  if (replace) await page.getByLabel("Come importare").selectOption("replace");
+  await page.getByRole("button", { name: "Verifica anteprima" }).click();
+}
+test("sostituzione richiede nome, blocca file parziale e conserva altri conti", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
+  await page
+    .locator(".desktop-nav")
+    .getByRole("button", { name: "Movimenti", exact: true })
+    .click();
+  await previewFile(page, "Carta TEST", "Liquidità broker");
+  await page.getByRole("button", { name: "Conferma 1 movimenti" }).click();
+  await previewFile(page, "Conto TEST", "Conto corrente");
+  await page.getByRole("button", { name: "Conferma 2 movimenti" }).click();
+  await expect(page.locator(".movement-row")).toHaveCount(3);
+  await previewFile(page, "Conto TEST", "Conto corrente", true);
+  await page
+    .getByLabel("Scrivi il nome del conto per confermare")
+    .fill("Conto corrente");
+  await expect(
+    page.getByRole("button", { name: "Conferma 2 movimenti" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Chiudi", exact: true }).click();
+  await previewFile(page, "Carta TEST", "Conto corrente", true);
+  await expect(
+    page.getByRole("button", { name: "Conferma 1 movimenti" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Scrivi il nome del conto per confermare")
+    .fill("Conto corrente");
+  await page.getByRole("button", { name: "Conferma 1 movimenti" }).click();
+  await expect(page.locator(".movement-row")).toHaveCount(2);
+  await expect(
+    page.locator(".movement-row").filter({ hasText: "Liquidità broker" }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".movement-row").filter({ hasText: "Conto corrente" }),
+  ).toHaveCount(1);
+});
+test("aggiornamento certo conserva categoria manuale; filtri e privacy seguono i dati", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Prova con dati di esempio" }).click();
+  await page
+    .locator(".desktop-nav")
+    .getByRole("button", { name: "Movimenti", exact: true })
+    .click();
+  await previewFile(page, "Conto TEST", "Conto corrente");
+  await page.getByRole("button", { name: "Conferma 2 movimenti" }).click();
+  const credit = page
+    .locator(".movement-row")
+    .filter({ hasText: "Accredito esempio" });
+  await credit
+    .getByRole("textbox", { name: "Categoria", exact: true })
+    .fill("Reddito personale");
+  await page.getByRole("heading", { name: "2 movimenti", exact: true }).click();
+  await previewFile(
+    page,
+    "Conto TEST",
+    "Conto corrente",
+    false,
+    "Nuova categoria bancaria",
+  );
+  await expect(page.locator(".import-stats")).toContainText("1 da aggiornare");
+  await page.getByRole("button", { name: "Conferma 1 movimenti" }).click();
+  await expect(
+    credit.getByRole("textbox", { name: "Categoria", exact: true }),
+  ).toHaveValue("Reddito personale");
+  await page
+    .getByRole("textbox", { name: "Cerca", exact: true })
+    .fill("Accredito");
+  await expect(page.locator(".movement-row")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "Nascondi importi", exact: true })
+    .click();
+  await expect(page.locator(".movement-total").first()).toContainText("••••••");
 });

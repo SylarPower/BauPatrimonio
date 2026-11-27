@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { fingerprint, today, type Store } from "./model";
+import { uid, today, type Store } from "./model";
 import {
   previewFideuram,
-  fideuramMovement,
+  applyFideuram,
   type BankRow,
   type BankPreview,
 } from "./fideuram";
@@ -22,14 +22,30 @@ export default function FideuramImporter({
     [filename, setFilename] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [allow, setAllow] = useState(false);
+    [allow, setAllow] = useState(false),
+    [mode, setMode] = useState<"merge" | "replace">("merge"),
+    [confirmation, setConfirmation] = useState("");
   const generation = useRef(0),
     committed = useRef(false);
   const targets = store.assets.filter(
     (a) => a.category === "cash" && !a.archivedAt,
   );
   const sources = [...new Set(rows.map((r) => r.account).filter(Boolean))];
-  const valid = preview?.filter((r) => !r.error && (!r.doubt || allow)) || [];
+  const valid =
+    preview?.filter(
+      (r) =>
+        !r.error &&
+        (!r.doubt || allow) &&
+        (mode === "replace" || r.action !== "unchanged"),
+    ) || [];
+  const replacing = store.movements.filter(
+    (m) => m.assetId === destination,
+  ).length;
+  const targetName = targets.find((a) => a.id === destination)?.name || "";
+  const replaceBlocked =
+    mode === "replace" &&
+    (confirmation !== targetName ||
+      !!preview?.some((r) => r.error || (r.doubt && !allow)));
   return (
     <>
       <p className="form-intro">
@@ -138,6 +154,28 @@ export default function FideuramImporter({
               Aggiungi prima un conto nella categoria Liquidità del patrimonio.
             </p>
           )}
+          <label>
+            Come importare
+            <select
+              value={mode}
+              disabled={busy}
+              onChange={(e) => {
+                setMode(e.target.value as "merge" | "replace");
+                setConfirmation("");
+              }}
+            >
+              <option value="merge">Aggiungi e aggiorna gli esistenti</option>
+              <option value="replace">
+                Sostituisci tutti i movimenti del conto selezionato
+              </option>
+            </select>
+          </label>
+          <p className="field-note">
+            Aggiungi e aggiorna conserva gli altri movimenti. Sostituisci
+            elimina anche i movimenti manuali e quelli fuori dal periodo del
+            file, ma soltanto dalla voce scelta. Saldi e altri conti non
+            cambiano.
+          </p>
           <p className="field-note">
             Importa un conto o carta alla volta. Gli altri restano esclusi; non
             sommare automaticamente movimenti di carta e conto, perché
@@ -148,7 +186,21 @@ export default function FideuramImporter({
       ) : (
         <>
           <div className="import-stats">
-            <span>{valid.length} valide</span>
+            <span>
+              {preview.filter((r) => !r.error && r.action === "new").length}{" "}
+              nuovi
+            </span>
+            <span>
+              {preview.filter((r) => !r.error && r.action === "update").length}{" "}
+              da aggiornare
+            </span>
+            <span>
+              {
+                preview.filter((r) => !r.error && r.action === "unchanged")
+                  .length
+              }{" "}
+              invariati
+            </span>
             <span>{preview.filter((r) => r.error).length} escluse</span>
             <span>{preview.filter((r) => r.doubt).length} da confermare</span>
           </div>
@@ -182,7 +234,15 @@ export default function FideuramImporter({
                       {r.amount || "—"} {r.currency}
                     </td>
                     <td>
-                      {r.error || (r.doubt ? "Possibile duplicato" : "Valida")}
+                      {r.error ||
+                        (r.doubt
+                          ? "Possibile duplicato: da confermare"
+                          : r.action === "update"
+                            ? "Sarà aggiornato"
+                            : r.action === "unchanged"
+                              ? "Invariato"
+                              : "Nuovo")}
+                      <small>{r.reason}</small>
                     </td>
                   </tr>
                 ))}
@@ -204,11 +264,39 @@ export default function FideuramImporter({
           )}
           <p className="field-note">
             Il confronto usa conto di destinazione, conto del file, data,
-            importo e descrizione. Le righe già importate sono escluse anche da
-            esportazioni sovrapposte. I casi con stessa data/importo richiedono
-            conferma.
+            importo e dettagli. Il file non fornisce un ID univoco verificato:
+            usiamo conto, data, importo, valuta e dettagli completi. Numeri nel
+            testo e descrizione da sola non identificano un movimento. Gli
+            invariati restano intatti, le corrispondenze certe vengono
+            aggiornate preservando le categorie corrette da te. I casi dubbi
+            richiedono conferma.
           </p>
         </>
+      )}
+      {preview && mode === "replace" && (
+        <section className="warning">
+          <h3>Sostituzione del conto: {targetName}</h3>
+          <p>
+            Saranno rimossi tutti i {replacing} movimenti attuali di questa voce
+            e inserite {valid.length} righe del file. Gli altri conti, le
+            valutazioni e i saldi restano intatti. Non c’è annullamento
+            automatico.
+          </p>
+          <label>
+            Scrivi il nome del conto per confermare
+            <input
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          {preview.some((r) => r.error || (r.doubt && !allow)) && (
+            <p>
+              Risolvi prima le righe escluse o dubbie: nessun movimento verrà
+              cancellato con un’importazione parziale.
+            </p>
+          )}
+        </section>
       )}
       {error && (
         <p role="alert" className="error">
@@ -228,7 +316,7 @@ export default function FideuramImporter({
         {preview ? (
           <button
             className="primary"
-            disabled={busy || !valid.length}
+            disabled={busy || !valid.length || replaceBlocked}
             onClick={async () => {
               if (committed.current) return;
               committed.current = true;
@@ -240,33 +328,28 @@ export default function FideuramImporter({
                   source,
                   destination,
                   store,
+                  mode,
                 );
-                const accepted = fresh.filter(
-                  (r) => !r.error && (!r.doubt || allow),
-                );
-                if (!accepted.length)
-                  throw Error("Nessuna nuova operazione da importare.");
-                const importId = await fingerprint(
-                  "fideuram-import|" +
-                    destination +
-                    "|" +
-                    accepted
-                      .map((r) => r.id)
-                      .sort()
-                      .join("|"),
-                );
-                const next = structuredClone(store);
-                next.movements.push(
-                  ...accepted.map((r) =>
-                    fideuramMovement(r, destination, importId),
-                  ),
+                if (mode === "replace" && confirmation !== targetName)
+                  throw Error("Conferma il nome del conto.");
+                const importId = uid();
+                const next = applyFideuram(
+                  store,
+                  fresh,
+                  destination,
+                  mode,
+                  allow,
+                  importId,
                 );
                 next.imports.push({
                   id: importId,
                   name: filename.slice(0, 250),
                   date: today(),
-                  rows: accepted.length,
-                  kind: "Movimenti Fideuram",
+                  rows: valid.length,
+                  kind:
+                    mode === "replace"
+                      ? "Sostituzione movimenti Fideuram"
+                      : "Aggiunta/aggiornamento Fideuram",
                 });
                 onSave(next);
               } catch (err) {
@@ -288,9 +371,10 @@ export default function FideuramImporter({
               setError("");
               try {
                 setPreview(
-                  await previewFideuram(rows, source, destination, store),
+                  await previewFideuram(rows, source, destination, store, mode),
                 );
                 setAllow(false);
+                setConfirmation("");
               } catch (err) {
                 setError((err as Error).message);
               } finally {

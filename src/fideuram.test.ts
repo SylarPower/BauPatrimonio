@@ -117,7 +117,7 @@ it("reimportazione e file sovrapposti non duplicano; nessun saldo o flusso rendi
     cash.id,
     s,
   );
-  expect(again.every((r) => r.error.includes("già importato"))).toBe(true);
+  expect(again.every((r) => r.action === "unchanged")).toBe(true);
 });
 it("duplicati identici nel file richiedono conferma e hanno ID distinti", async () => {
   const s = demo(),
