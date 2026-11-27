@@ -3256,71 +3256,325 @@ th:nth-child(2) {
   padding: 12px 0;
 }
 
+/* Shared inset rhythm for editorial cards; table/list cards retain edge-to-edge rows. */
+.content-card {
+  padding: 24px;
+  margin-bottom: 20px;
+  overflow: visible;
+  min-width: 0;
+}
+.content-card > .section-heading {
+  padding: 0;
+  align-items: flex-start;
+  gap: 24px;
+}
+.content-card .section-heading > div {
+  min-width: 0;
+}
+.content-card h2 {
+  line-height: 1.45;
+}
+.content-card p {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.content-card > p,
+.content-card .section-heading p {
+  margin-top: 8px;
+}
+.content-card label {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  line-height: 1.4;
+}
+.content-card input,
+.content-card select {
+  margin: 0;
+  min-height: 44px;
+  min-width: 0;
+}
+.content-card button {
+  min-height: 44px;
+}
+.content-card details {
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 0;
+}
+.content-card summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 500;
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.content-card details > p {
+  margin: 12px 0;
+}
+.content-card > details {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 8px;
+}
+.content-card summary:focus-visible {
+  outline-offset: 0;
+  border-radius: 4px;
+}
+.movement-tools .section-heading > button {
+  flex-shrink: 0;
+}
 .movement-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 16px;
+  margin: 24px 0 20px;
+}
+.movement-filters > label:first-child {
+  grid-column: span 2;
+}
+.movement-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.movement-metrics > p {
+  padding: 16px 20px;
+}
+.movement-metrics > p + p {
+  border-left: 1px solid var(--border);
 }
 .movement-total {
   display: block;
-  font-size: 1.6rem;
+  color: var(--text);
+  font-size: clamp(20px, 2.2vw, 26px);
+  line-height: 1.3;
   margin-top: 8px;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  overflow-wrap: anywhere;
 }
 .movement-row {
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) auto minmax(120px, 1fr) minmax(
-      150px,
-      1fr
-    );
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, auto) 150px 180px;
+  gap: 20px;
   padding: 22px 0;
-  border-bottom: 1px solid var(--border, #e6e4de);
+  border-bottom: 1px solid var(--border);
   align-items: start;
+}
+.movement-register > .movement-row:first-of-type {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+.movement-row > * {
+  min-width: 0;
+}
+.movement-row > strong {
+  text-align: right;
+  padding-top: 24px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .movement-row small {
   display: block;
+  color: var(--muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 .movement-description {
   display: block;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  margin: 8px 0;
+  margin: 6px 0 0;
+  line-height: 1.5;
+  font-size: 14px;
 }
-.movement-row input,
-.movement-row select {
-  width: 100%;
-  min-width: 0;
+.movement-row summary {
+  padding: 8px 0 0;
+  min-height: 32px;
+  font-size: 12px;
 }
-@media (max-width: 650px) {
-  .movement-row {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .movement-row > div {
-    grid-column: 1/-1;
-  }
-  .movement-filters {
-    grid-template-columns: 1fr;
-  }
-  .movement-row > strong {
-    grid-column: 1/-1;
-  }
-  .section-heading {
-    flex-wrap: wrap;
-  }
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.movement-register .form-actions {
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+}
+.instrument-analysis > label {
+  margin: 20px 0;
+}
+.instrument-analysis h3 {
+  margin: 24px 0 16px;
+}
+.instrument-analysis > details > label {
+  margin: 20px 0;
+  max-width: 420px;
+}
+.instrument-analysis .text-button {
+  display: inline-flex;
+  padding: 12px 0;
+  line-height: 1.5;
 }
 .market-chart {
+  display: block;
   width: 100%;
   height: 500px;
-  border: 1px solid var(--border, #e6e4de);
-  border-radius: 12px;
-  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 20px;
+  background: var(--paper);
 }
 .personal-price-chart {
+  display: block;
   width: 100%;
   max-height: 180px;
-  color: var(--accent, #345b43);
-  margin: 16px 0;
+  color: var(--accent);
+  margin: 20px 0;
+}
+.toolbar {
+  align-items: stretch;
+  gap: 12px;
+}
+.toolbar > button,
+.toolbar > select,
+.toolbar .search {
+  min-height: 44px;
+}
+.asset-name strong,
+.asset-name small {
+  overflow-wrap: anywhere;
+}
+.asset-value {
+  min-width: 0;
+}
+.asset-value strong {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  .movement-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+  }
+  .movement-row > strong {
+    padding-top: 0;
+  }
+}
+@media (max-width: 800px) {
+  .movement-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .content-card > .section-heading {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .movement-metrics > p {
+    padding: 16px 12px;
+  }
+}
+@media (max-width: 480px) {
+  .content-card {
+    padding: 20px 16px;
+    margin-bottom: 16px;
+  }
+  .movement-tools .section-heading > button {
+    width: 100%;
+  }
+  .movement-filters {
+    gap: 16px 12px;
+    margin-top: 20px;
+  }
+  .movement-filters > label:nth-child(2),
+  .movement-filters > label:nth-child(3),
+  .movement-filters > label:nth-child(4),
+  .movement-filters > label:nth-child(7) {
+    grid-column: span 2;
+  }
+  .movement-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .movement-metrics > p {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .movement-metrics > p + p {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .movement-total {
+    margin-top: 0;
+    text-align: right;
+    font-size: 22px;
+  }
+  .movement-row {
+    gap: 16px 12px;
+    padding: 20px 0;
+  }
+  .movement-row > div {
+    grid-column: 1 / -1;
+  }
+  .movement-row > strong {
+    grid-column: 1 / -1;
+    text-align: left;
+    font-size: 16px;
+  }
+  .movement-register .form-actions {
+    gap: 12px 8px;
+  }
+  .movement-register .form-actions > span {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+  .movement-register .form-actions > button {
+    flex: 1;
+  }
+  .instrument-analysis .form-actions > button {
+    width: 100%;
+    white-space: normal;
+  }
+  .summary-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 0 0 20px;
+  }
+  .summary-strip > span {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .market-chart {
+    height: 420px;
+  }
+}
+
+/* Align portfolio group headers and rows with the inset cards. */
+.asset-group > .section-heading {
+  padding: 20px 24px;
+}
+.asset-group > .asset-row {
+  padding: 16px 24px;
+}
+@media (max-width: 700px) {
+  .asset-group > .section-heading {
+    padding: 20px 16px;
+  }
+  .asset-group > .asset-row {
+    padding: 16px;
+  }
 }

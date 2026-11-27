@@ -62,7 +62,7 @@ export default function Movements({
     current = Math.min(page, max);
   return (
     <>
-      <section className="card">
+      <section className="card content-card movement-tools">
         <div className="section-heading">
           <div>
             <h2>Entrate e spese, senza confusione</h2>
@@ -155,6 +155,7 @@ export default function Movements({
           <p role="alert">La data iniziale deve precedere quella finale.</p>
         )}
         <button
+          className="secondary"
           type="button"
           onClick={() => {
             setSearch("");
@@ -170,9 +171,9 @@ export default function Movements({
           Azzera filtri
         </button>
       </section>
-      <section className="card">
+      <section className="card content-card movement-summary">
         <h2>Nel periodo e nei filtri selezionati</h2>
-        <div className="movement-filters">
+        <div className="movement-metrics">
           <p>
             Entrate
             <strong className="movement-total">{format(summary.income)}</strong>
@@ -209,7 +210,7 @@ export default function Movements({
           ))}
         </details>
       </section>
-      <section className="card">
+      <section className="card content-card movement-register">
         <h2>{filtered.length} movimenti</h2>
         <p>
           Correggi categoria e tipo direttamente qui. Le tue correzioni restano
@@ -282,13 +283,18 @@ export default function Movements({
           </p>
         )}
         <div className="form-actions">
-          <button disabled={!current} onClick={() => setPage(current - 1)}>
+          <button
+            className="secondary"
+            disabled={!current}
+            onClick={() => setPage(current - 1)}
+          >
             Precedenti
           </button>
           <span>
             Pagina {current + 1} di {max + 1}
           </span>
           <button
+            className="secondary"
             disabled={current >= max}
             onClick={() => setPage(current + 1)}
           >

@@ -786,14 +786,6 @@ function App({
                 </>
               )}
               {page === "Patrimonio" && (
-                <InstrumentAnalysis
-                  hidden={hidden}
-                  assets={store.assets.filter(
-                    (a) => a.category === "investment",
-                  )}
-                />
-              )}
-              {page === "Patrimonio" && (
                 <>
                   <div className="toolbar">
                     <button
@@ -888,6 +880,12 @@ function App({
                         .toLowerCase()
                         .includes(query.toLowerCase()),
                     ) && <p>Nessuna voce corrisponde alla ricerca.</p>}
+                  <InstrumentAnalysis
+                    hidden={hidden}
+                    assets={store.assets.filter(
+                      (a) => a.category === "investment",
+                    )}
+                  />
                   {store.assets.some((a) => a.archivedAt) && (
                     <details className="card archived">
                       <summary>

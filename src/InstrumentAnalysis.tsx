@@ -46,7 +46,7 @@ export default function InstrumentAnalysis({
     low = Math.min(...prices),
     high = Math.max(...prices);
   return (
-    <section className="card">
+    <section className="card content-card instrument-analysis">
       <h2>Azioni ed ETF · prezzi</h2>
       <p>
         Consulta il mercato separatamente dai prezzi registrati nel tuo dossier.
@@ -180,7 +180,11 @@ export default function InstrumentAnalysis({
             Carica grafico online
           </button>
           {document && (
-            <button type="button" onClick={() => setDocument("")}>
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => setDocument("")}
+            >
               Chiudi grafico online
             </button>
           )}
